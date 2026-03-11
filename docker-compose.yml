@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  db:
+    image: mysql:8.0
+  backend:
+    image: mcr.microsoft.com/dotnet/aspnet:9.0
+  frontend:
+    image: node:20
