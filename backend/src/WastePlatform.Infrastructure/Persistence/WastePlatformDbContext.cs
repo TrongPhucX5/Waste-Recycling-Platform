@@ -189,7 +189,8 @@ public class WastePlatformDbContext : DbContext
             entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
             entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
             entity.Property(e => e.CollectedWeightKg).HasColumnName("collected_weight_kg").HasPrecision(8, 2);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.AssignedAt).HasColumnName("assigned_at");
+            entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
             
             entity.HasOne(e => e.WasteReport)
                 .WithOne(r => r.CollectionTask)
@@ -219,7 +220,7 @@ public class WastePlatformDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.TaskId).HasColumnName("task_id");
             entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.ChangedAt).HasColumnName("changed_at");
             
             entity.HasOne(e => e.CollectionTask)
                 .WithMany(t => t.StatusLogs)
@@ -252,7 +253,9 @@ public class WastePlatformDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.EnterpriseId).HasColumnName("enterprise_id");
             entity.Property(e => e.WasteCategoryId).HasColumnName("waste_category_id");
-            entity.Property(e => e.PointsPerKg).HasColumnName("points_per_kg");
+            entity.Property(e => e.PointsPerReport).HasColumnName("points_per_report");
+            entity.Property(e => e.BonusQuality).HasColumnName("bonus_quality");
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
             
             entity.HasOne(e => e.Enterprise)
                 .WithMany(en => en.RewardRules)
