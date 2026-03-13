@@ -4,22 +4,44 @@ namespace WastePlatform.Domain.Entities;
 
 public class User
 {
-    public Guid Id { get; set; }
-    public string Email { get; set; } = null!;
-    public string PasswordHash { get; set; } = null!;
-    public string FullName { get; set; } = null!;
-    public string? Phone { get; set; }
-    public UserRole Role { get; set; }
-    public string? District { get; set; }
-    public string? Ward { get; set; }
-    public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public Guid Id { get; private set; } = Guid.NewGuid();
+    public string Email { get; private set; } = null!;
+    public string PasswordHash { get; private set; } = null!;
+    public string FullName { get; private set; } = null!;
+    public string? Phone { get; private set; }
+    public UserRole Role { get; private set; }
+    public string? District { get; private set; }
+    public string? Ward { get; private set; }
+    public bool IsActive { get; private set; } = true;
+    public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; private set; }
 
-    // Navigation properties
-    public virtual Enterprise? Enterprise { get; set; }
-    public virtual Collector? Collector { get; set; }
-    public virtual ICollection<WasteReport> WasteReports { get; set; } = new List<WasteReport>();
-    public virtual ICollection<Complaint> Complaints { get; set; } = new List<Complaint>();
-    public virtual ICollection<RewardPoints> RewardPoints { get; set; } = new List<RewardPoints>();
-    public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
+    // Navigation
+    public ICollection<WasteReport> WasteReports { get; private set; } = new List<WasteReport>();
+    public ICollection<RewardPoints> RewardPoints { get; private set; } = new List<RewardPoints>();
+    public ICollection<Complaint> Complaints { get; private set; } = new List<Complaint>();
+    public ICollection<AuditLog> AuditLogs { get; private set; } = new List<AuditLog>();
+    public Enterprise? Enterprise { get; private set; }
+    public Collector? Collector { get; private set; }
+
+    protected User() { }
+
+    public static User Create(string email, string passwordHash, string fullName,
+        UserRole role, string? phone = null, string? district = null, string? ward = null)
+    {
+        return new User
+        {
+            Id = Guid.NewGuid(),
+            Email = email.ToLowerInvariant(),
+            PasswordHash = passwordHash,
+            FullName = fullName,
+            Role = role,
+            Phone = phone,
+            District = district,
+            Ward = ward,
+        };
+    }
+
+    public void Deactivate() => IsActive = false;
+    public void Activate()   => IsActive = true;
 }

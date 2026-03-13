@@ -1,50 +1,74 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Infrastructure.Persistence;
+using WastePlatform.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add DbContext
+// ── Database ────────────────────────────────────────────────────────
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
 builder.Services.AddDbContext<WastePlatformDbContext>(options =>
-    options.UseMySql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
-    )
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
 
-// Add services to the container
+// ── JWT Authentication ───────────────────────────────────────────────
+var jwtSecret = builder.Configuration["JwtSettings:SecretKey"]
+    ?? throw new InvalidOperationException("JWT SecretKey not configured.");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer              = builder.Configuration["JwtSettings:Issuer"],
+            ValidAudience            = builder.Configuration["JwtSettings:Audience"],
+            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+// ── Application Services ─────────────────────────────────────────────
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<AuthService>();
+
+// ── CORS ─────────────────────────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", corsBuilder =>
+        corsBuilder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+});
+
+// ── Controllers & Swagger ─────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        corsBuilder =>
-        {
-            corsBuilder
-                .AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader();
-        });
-});
 
 var app = builder.Build();
 
-// Auto-migrate database on startup
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<WastePlatformDbContext>();
-    dbContext.Database.Migrate();
-}
+// ── Database is initialized via SQL migration scripts in docker-compose ───
+// The db/migrations folder is mounted to /docker-entrypoint-initdb.d in MySQL
+// Auto-migration is skipped since DDL is managed by versioned SQL files
 
-// Configure the HTTP request pipeline
+// ── Middleware pipeline ───────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// NOTE: No UseHttpsRedirection() — Docker runs plain HTTP on port 8080
 app.UseCors("AllowAll");
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

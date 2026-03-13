@@ -32,17 +32,23 @@ public class WastePlatformDbContext : DbContext
         // Configure Users
         modelBuilder.Entity<User>(entity =>
         {
+            entity.ToTable("users");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.FullName).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Phone).HasMaxLength(15);
-            entity.Property(e => e.District).HasMaxLength(100);
-            entity.Property(e => e.Ward).HasMaxLength(100);
-            entity.Property(e => e.Role).HasConversion<string>();
-            
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Email).HasColumnName("email").IsRequired().HasMaxLength(255);
+            entity.Property(e => e.PasswordHash).HasColumnName("password_hash").IsRequired().HasMaxLength(255);
+            entity.Property(e => e.FullName).HasColumnName("full_name").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Phone).HasColumnName("phone").HasMaxLength(15);
+            entity.Property(e => e.District).HasColumnName("district").HasMaxLength(100);
+            entity.Property(e => e.Ward).HasColumnName("ward").HasMaxLength(100);
+            entity.Property(e => e.Role).HasColumnName("role").HasConversion<string>();
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired(false);
+
             entity.HasIndex(e => e.Email).IsUnique();
-            entity.HasIndex(e => e.Phone).IsUnique();
+            // Phone nullable: filter index to avoid UNIQUE violation on multiple NULLs in MySQL
+            entity.HasIndex(e => e.Phone).IsUnique().HasFilter("`Phone` IS NOT NULL");
             entity.HasIndex(e => new { e.District, e.Ward });
             entity.HasIndex(e => e.Role);
         });
@@ -50,9 +56,15 @@ public class WastePlatformDbContext : DbContext
         // Configure Enterprises
         modelBuilder.Entity<Enterprise>(entity =>
         {
+            entity.ToTable("enterprises");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.CompanyName).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.ServiceArea).HasMaxLength(500);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.CompanyName).HasColumnName("company_name").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ServiceArea).HasColumnName("service_area").HasMaxLength(500);
+            entity.Property(e => e.CapacityKgPerDay).HasColumnName("capacity_kg_per_day");
+            entity.Property(e => e.IsVerified).HasColumnName("is_verified");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             
             entity.HasOne(e => e.User)
                 .WithOne(u => u.Enterprise)
@@ -65,15 +77,23 @@ public class WastePlatformDbContext : DbContext
         // Configure WasteCategories
         modelBuilder.Entity<WasteCategory>(entity =>
         {
+            entity.ToTable("waste_categories");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(50);
             entity.HasIndex(e => e.Name).IsUnique();
         });
 
         // Configure Collectors
         modelBuilder.Entity<Collector>(entity =>
         {
+            entity.ToTable("collectors");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.EnterpriseId).HasColumnName("enterprise_id");
+            entity.Property(e => e.IsAvailable).HasColumnName("is_available");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             
             entity.HasOne(e => e.User)
                 .WithOne(u => u.Collector)
@@ -91,7 +111,11 @@ public class WastePlatformDbContext : DbContext
         // Configure EnterpriseWasteTypes
         modelBuilder.Entity<EnterpriseWasteType>(entity =>
         {
+            entity.ToTable("enterprise_waste_types");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.EnterpriseId).HasColumnName("enterprise_id");
+            entity.Property(e => e.WasteCategoryId).HasColumnName("waste_category_id");
             
             entity.HasOne(e => e.Enterprise)
                 .WithMany(en => en.WasteTypes)
@@ -108,13 +132,18 @@ public class WastePlatformDbContext : DbContext
         // Configure WasteReports
         modelBuilder.Entity<WasteReport>(entity =>
         {
+            entity.ToTable("waste_reports");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Description).HasMaxLength(500);
-            entity.Property(e => e.Latitude).HasPrecision(10, 8);
-            entity.Property(e => e.Longitude).HasPrecision(11, 8);
-            entity.Property(e => e.Address).HasMaxLength(500);
-            entity.Property(e => e.AiSuggestion).HasMaxLength(50);
-            entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CitizenId).HasColumnName("citizen_id");
+            entity.Property(e => e.WasteCategoryId).HasColumnName("waste_category_id");
+            entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(500);
+            entity.Property(e => e.Latitude).HasColumnName("latitude").HasPrecision(10, 8);
+            entity.Property(e => e.Longitude).HasColumnName("longitude").HasPrecision(11, 8);
+            entity.Property(e => e.Address).HasColumnName("address").HasMaxLength(500);
+            entity.Property(e => e.AiSuggestion).HasColumnName("ai_suggestion").HasMaxLength(50);
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             
             entity.HasOne(e => e.Citizen)
                 .WithMany(u => u.WasteReports)
@@ -136,8 +165,11 @@ public class WastePlatformDbContext : DbContext
         // Configure ReportImages
         modelBuilder.Entity<ReportImage>(entity =>
         {
+            entity.ToTable("report_images");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.ImageUrl).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ReportId).HasColumnName("report_id");
+            entity.Property(e => e.ImageUrl).HasColumnName("image_url").IsRequired().HasMaxLength(500);
             
             entity.HasOne(e => e.WasteReport)
                 .WithMany(r => r.Images)
@@ -148,10 +180,16 @@ public class WastePlatformDbContext : DbContext
         // Configure CollectionTasks
         modelBuilder.Entity<CollectionTask>(entity =>
         {
+            entity.ToTable("collection_tasks");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Notes).HasMaxLength(500);
-            entity.Property(e => e.CollectedWeightKg).HasPrecision(8, 2);
-            entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ReportId).HasColumnName("report_id");
+            entity.Property(e => e.EnterpriseId).HasColumnName("enterprise_id");
+            entity.Property(e => e.CollectorId).HasColumnName("collector_id");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
+            entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
+            entity.Property(e => e.CollectedWeightKg).HasColumnName("collected_weight_kg").HasPrecision(8, 2);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             
             entity.HasOne(e => e.WasteReport)
                 .WithOne(r => r.CollectionTask)
@@ -176,8 +214,12 @@ public class WastePlatformDbContext : DbContext
         // Configure TaskStatusLogs
         modelBuilder.Entity<TaskStatusLog>(entity =>
         {
+            entity.ToTable("task_status_logs");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TaskId).HasColumnName("task_id");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             
             entity.HasOne(e => e.CollectionTask)
                 .WithMany(t => t.StatusLogs)
@@ -190,8 +232,11 @@ public class WastePlatformDbContext : DbContext
         // Configure CollectionImages
         modelBuilder.Entity<CollectionImage>(entity =>
         {
+            entity.ToTable("collection_images");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.ImageUrl).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TaskId).HasColumnName("task_id");
+            entity.Property(e => e.ImageUrl).HasColumnName("image_url").IsRequired().HasMaxLength(500);
             
             entity.HasOne(e => e.CollectionTask)
                 .WithMany(t => t.Images)
@@ -202,7 +247,12 @@ public class WastePlatformDbContext : DbContext
         // Configure RewardRules
         modelBuilder.Entity<RewardRule>(entity =>
         {
+            entity.ToTable("reward_rules");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.EnterpriseId).HasColumnName("enterprise_id");
+            entity.Property(e => e.WasteCategoryId).HasColumnName("waste_category_id");
+            entity.Property(e => e.PointsPerKg).HasColumnName("points_per_kg");
             
             entity.HasOne(e => e.Enterprise)
                 .WithMany(en => en.RewardRules)
@@ -219,9 +269,15 @@ public class WastePlatformDbContext : DbContext
         // Configure RewardPoints
         modelBuilder.Entity<RewardPoints>(entity =>
         {
+            entity.ToTable("reward_points");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.IdempotencyKey).HasMaxLength(100);
-            entity.Property(e => e.Reason).HasMaxLength(255);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CitizenId).HasColumnName("citizen_id");
+            entity.Property(e => e.ReportId).HasColumnName("report_id");
+            entity.Property(e => e.Points).HasColumnName("points");
+            entity.Property(e => e.Reason).HasColumnName("reason").HasMaxLength(255);
+            entity.Property(e => e.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             
             entity.HasOne(e => e.Citizen)
                 .WithMany(u => u.RewardPoints)
@@ -232,17 +288,23 @@ public class WastePlatformDbContext : DbContext
                 .HasForeignKey(e => e.ReportId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            entity.HasIndex(e => e.IdempotencyKey).IsUnique();
+            // IdempotencyKey nullable: only unique when non-null
+            entity.HasIndex(e => e.IdempotencyKey).IsUnique().HasFilter("`IdempotencyKey` IS NOT NULL");
             entity.HasIndex(e => new { e.CitizenId, e.CreatedAt });
         });
 
         // Configure Complaints
         modelBuilder.Entity<Complaint>(entity =>
         {
+            entity.ToTable("complaints");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Content).HasMaxLength(2000);
-            entity.Property(e => e.AdminResponse).HasMaxLength(2000);
-            entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CitizenId).HasColumnName("citizen_id");
+            entity.Property(e => e.ReportId).HasColumnName("report_id");
+            entity.Property(e => e.Content).HasColumnName("content").HasMaxLength(2000);
+            entity.Property(e => e.AdminResponse).HasColumnName("admin_response").HasMaxLength(2000);
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             
             entity.HasOne(e => e.Citizen)
                 .WithMany(u => u.Complaints)
@@ -260,10 +322,15 @@ public class WastePlatformDbContext : DbContext
         // Configure AuditLogs
         modelBuilder.Entity<AuditLog>(entity =>
         {
+            entity.ToTable("audit_logs");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Action).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.EntityType).HasMaxLength(50);
-            entity.Property(e => e.IpAddress).HasMaxLength(45);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Action).HasColumnName("action").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.EntityType).HasColumnName("entity_type").HasMaxLength(50);
+            entity.Property(e => e.EntityId).HasColumnName("entity_id");
+            entity.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             
             entity.HasOne(e => e.User)
                 .WithMany(u => u.AuditLogs)
