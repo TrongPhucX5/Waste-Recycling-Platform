@@ -1,6 +1,6 @@
 # 🗑️ Crowdsourced Waste Collection & Recycling Platform
 
-> A web-based platform connecting **Citizens**, **Recycling Enterprises**, and **Collectors** to streamline waste reporting, collection, and reward redemption—built with C# .NET 8 + Next.js 14.
+> A web-based platform connecting **Citizens**, **Recycling Enterprises**, and **Collectors** to streamline waste reporting, collection, and reward redemption—built with C# .NET 9 + Next.js 14.
 
 ---
 
@@ -19,19 +19,19 @@
 
 | Layer | Technology |
 |---|---|
-| **Backend** | C# .NET 8 — ASP.NET Core Web API (Clean Architecture + CQRS with MediatR) |
+| **Backend** | C# .NET 9 — ASP.NET Core Web API (Clean Architecture + CQRS with MediatR) |
 | **Frontend** | Next.js 14 (App Router) — React 18, TypeScript, Tailwind CSS |
 | **Database** | MySQL 8.0 + EF Core via Pomelo provider |
 | **Auth** | JWT — access token (1 h) + refresh token (30 d) |
 | **State (FE)** | Zustand (auth) + TanStack Query (server state + polling) |
-| **Infra** | Docker Compose — Nginx reverse proxy |
+| **Infra** | Docker Compose (MySQL, backend, frontend) |
 | **CI/CD** | GitHub Actions |
 
 ---
 
 ## 📋 Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - [Node.js 20+](https://nodejs.org/)
 - [Docker & Docker Compose](https://docs.docker.com/get-docker/) *(recommended for DB)*
 - MySQL 8.0 *(or use the Docker Compose DB service)*
@@ -43,8 +43,8 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<your-org>/waste-platform.git
-cd waste-platform
+git clone https://github.com/TrongPhucX5/Waste-Recycling-Platform.git
+cd Waste-Recycling-Platform
 ```
 
 ### 2. Configure Environment Variables
@@ -57,12 +57,15 @@ Edit `.env`:
 
 | Variable | Description | Example |
 |---|---|---|
-| `DATABASE_URL` | MySQL connection string | `Server=localhost;Database=wasteplatform;User=root;Password=secret` |
+| `MYSQL_ROOT_PASSWORD` | MySQL root password | `rootpassword` |
+| `MYSQL_DATABASE` | Database name | `WastePlatformDB` |
+| `MYSQL_USER` | Application DB user | `wasteuser` |
+| `MYSQL_PASSWORD` | Application DB password | `wastepassword` |
+| `ASPNETCORE_ENVIRONMENT` | ASP.NET Core environment | `Development` |
 | `JWT_SECRET` | 256-bit secret for signing JWTs | *(generate with `openssl rand -hex 32`)* |
-| `JWT_EXPIRY_MINUTES` | Access token lifetime | `60` |
-| `JWT_REFRESH_DAYS` | Refresh token lifetime | `30` |
-| `STORAGE_BUCKET` | Cloud storage bucket name | `waste-platform-images` |
-| `AI_SERVICE_URL` | Internal AI classification endpoint | `http://ai-service:8000` |
+| `JWT_ISSUER` | JWT token issuer | `WastePlatform` |
+| `JWT_AUDIENCE` | JWT token audience | `WastePlatformClient` |
+| `NEXT_PUBLIC_API_URL` | Backend API base URL for the frontend | `http://localhost:8080` |
 
 ### 3. Start the Database
 
@@ -72,20 +75,32 @@ docker compose up -d db
 
 ### 4. Run Database Migrations
 
-```bash
-cd backend
-dotnet ef database update --project src/WastePlatform.Infrastructure --startup-project src/WastePlatform.API
+The database schema is managed by versioned SQL files. When the DB container starts, it automatically runs the files in `db/migrations/` (mounted to `/docker-entrypoint-initdb.d`):
+
+```
+db/migrations/
+├── V1__create_base_tables.sql
+├── V2__add_indexes.sql
+└── V3__add_triggers_and_views.sql
 ```
 
-*(Or run the migration SQL files in `db/migrations/` manually in order.)*
+To apply them manually (e.g., against a standalone MySQL instance):
+
+```bash
+mysql -u wasteuser -p WastePlatformDB < db/migrations/V1__create_base_tables.sql
+mysql -u wasteuser -p WastePlatformDB < db/migrations/V2__add_indexes.sql
+mysql -u wasteuser -p WastePlatformDB < db/migrations/V3__add_triggers_and_views.sql
+```
+
+*(Or run the all-in-one `migration_mysql.sql` at the repo root.)*
 
 ### 5. Start the Backend API
 
 ```bash
 cd backend
 dotnet run --project src/WastePlatform.API
-# API available at http://localhost:5000
-# Swagger UI at  http://localhost:5000/swagger
+# API available at http://localhost:8080
+# Swagger UI at  http://localhost:8080/swagger
 ```
 
 ### 6. Start the Frontend
@@ -105,9 +120,9 @@ docker compose up --build
 
 | Service | URL |
 |---|---|
-| Frontend (via Nginx) | http://localhost |
-| API (via Nginx) | http://localhost/api |
-| Swagger | http://localhost/api/swagger |
+| Frontend | http://localhost:3000 |
+| API | http://localhost:8080 |
+| Swagger | http://localhost:8080/swagger |
 | MySQL | localhost:3306 |
 
 ---
@@ -118,37 +133,38 @@ docker compose up --build
 
 ```
 waste-platform/
-├── backend/              # C# .NET 8 — Clean Architecture
+├── backend/              # C# .NET 9 — Clean Architecture
 │   ├── src/
 │   │   ├── WastePlatform.Domain/         # Entities, Enums, Value Objects, Domain Events
 │   │   ├── WastePlatform.Application/    # Use Cases (Commands/Queries via MediatR)
 │   │   ├── WastePlatform.Infrastructure/ # EF Core, Repositories, External Services
+│   │   │   ├── Persistence/
+│   │   │   │   ├── Configurations/       # EF Core entity type configurations
+│   │   │   │   └── Repositories/         # Repository implementations
+│   │   │   └── Services/                 # JWT, email, storage services
 │   │   └── WastePlatform.API/            # Controllers, Middleware, DTOs
-│   └── tests/
-│       ├── WastePlatform.Domain.Tests/
-│       ├── WastePlatform.Application.Tests/
-│       └── WastePlatform.Integration.Tests/
+│   └── Dockerfile
 │
 ├── frontend/             # Next.js 14 (App Router)
 │   └── src/
 │       ├── app/
 │       │   ├── (auth)/          # /login, /register
-│       │   ├── (citizen)/       # /dashboard, /reports, /rewards, /complaints
-│       │   ├── (enterprise)/    # /dashboard, /reports, /tasks, /analytics
-│       │   ├── (collector)/     # /tasks, /history
-│       │   └── (admin)/         # /dashboard, /users, /enterprises, /complaints
+│       │   ├── (citizen)/       # /reports, /rewards
+│       │   ├── (enterprise)/    # /reports, /tasks
+│       │   ├── (collector)/     # /tasks
+│       │   └── (admin)/         # /users
 │       ├── components/          # Reusable UI components
-│       ├── hooks/               # useAuth, useGeolocation, usePolling, ...
+│       ├── hooks/               # Custom React hooks
 │       ├── lib/api/             # Axios client + per-domain API modules
-│       └── types/               # Auto-generated from openapi.yaml
+│       ├── store/               # Zustand stores
+│       └── types/               # TypeScript type definitions
 │
 ├── db/
-│   ├── migrations/       # Versioned SQL migration files
-│   └── seeds/            # Seed data (waste categories, admin user)
+│   └── migrations/       # Versioned SQL migration files (V1, V2, V3)
 │
-├── docs/                 # openapi.yaml, design docs
+├── docs/                 # Architecture and design docs
 ├── docker-compose.yml
-└── .github/workflows/    # CI/CD pipelines
+└── migration_mysql.sql   # All-in-one SQL migration file
 ```
 
 ### Clean Architecture Layers
@@ -300,13 +316,10 @@ sequenceDiagram
 
 | Package | Purpose |
 |---|---|
-| `axios` | HTTP client with JWT interceptor |
-| `zustand` | Global auth state |
-| `@tanstack/react-query` | Server state, caching, polling |
-| `react-hook-form` + `zod` | Form validation |
-| `react-leaflet` | Interactive map + GPS picker |
-| `next-pwa` | PWA support |
-| `openapi-typescript` | Auto-generate types from openapi.yaml |
+| `next` | React framework with App Router, SSR, and PWA support |
+| `react` / `react-dom` | UI library |
+| `typescript` | Static typing |
+| `tailwindcss` | Utility-first CSS framework |
 
 ---
 
@@ -324,21 +337,20 @@ sequenceDiagram
 
 ### Backend
 
+Test projects are not yet scaffolded. To add them:
+
 ```bash
 cd backend
-# Unit + integration tests
+dotnet new xunit -n WastePlatform.Application.Tests -o tests/WastePlatform.Application.Tests
+dotnet sln ../../Waste-Recycling-Platform.sln add tests/WastePlatform.Application.Tests
 dotnet test
-
-# Specific project
-dotnet test tests/WastePlatform.Application.Tests
 ```
 
 ### Frontend
 
 ```bash
 cd frontend
-npm test           # Jest unit tests
-npm run e2e        # Playwright E2E tests (if configured)
+npm run build      # Verify production build succeeds
 ```
 
 ---
@@ -348,20 +360,21 @@ npm run e2e        # Playwright E2E tests (if configured)
 ### Docker Compose (Recommended)
 
 ```bash
-# Production build
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Start all services (db, backend, frontend)
+docker compose up -d --build
 ```
 
-Nginx routes:
-- `/` → `frontend:3000`
-- `/api/*` → `backend:5000`
+Services exposed:
+- Frontend → `http://localhost:3000`
+- Backend API → `http://localhost:8080`
+- MySQL → `localhost:3306`
 
 ### CI/CD (GitHub Actions)
 
 | Workflow | Trigger | Action |
 |---|---|---|
-| `backend-ci.yml` | Push / PR | `dotnet test` + `dotnet build` |
-| `frontend-ci.yml` | Push / PR | `npm test` + `npm run build` |
+| `backend-ci.yml` | Push / PR | `dotnet build` |
+| `frontend-ci.yml` | Push / PR | `npm run build` |
 | `deploy.yml` | Merge to `main` | `docker compose up` on server |
 
 ---
@@ -371,11 +384,9 @@ Nginx routes:
 ### Backend
 
 ```bash
-dotnet run --project src/WastePlatform.API         # Start API server
-dotnet test                                         # Run all tests
-dotnet ef migrations add <Name> --project src/WastePlatform.Infrastructure \
-  --startup-project src/WastePlatform.API          # Add migration
-dotnet ef database update ...                       # Apply migrations
+dotnet run --project src/WastePlatform.API         # Start API server (http://localhost:8080)
+dotnet build                                        # Build all projects
+dotnet publish -c Release                           # Production publish
 ```
 
 ### Frontend
@@ -383,9 +394,7 @@ dotnet ef database update ...                       # Apply migrations
 ```bash
 npm run dev        # Development server (http://localhost:3000)
 npm run build      # Production build
-npm run lint       # ESLint check
-npm run type-check # TypeScript check
-npx openapi-typescript docs/openapi.yaml -o src/types/api.ts  # Regenerate API types
+npm run start      # Start production server
 ```
 
 ---
@@ -394,12 +403,15 @@ npx openapi-typescript docs/openapi.yaml -o src/types/api.ts  # Regenerate API t
 
 | Variable | Required | Description |
 |---|---|---|
-| `DATABASE_URL` | ✅ | MySQL connection string |
+| `MYSQL_ROOT_PASSWORD` | ✅ | MySQL root password |
+| `MYSQL_DATABASE` | ✅ | Database name |
+| `MYSQL_USER` | ✅ | Application database user |
+| `MYSQL_PASSWORD` | ✅ | Application database password |
+| `ASPNETCORE_ENVIRONMENT` | ✅ | `Development` or `Production` |
 | `JWT_SECRET` | ✅ | 256-bit signing secret |
-| `JWT_EXPIRY_MINUTES` | ✅ | Access token expiry (default: `60`) |
-| `JWT_REFRESH_DAYS` | ✅ | Refresh token expiry (default: `30`) |
-| `STORAGE_BUCKET` | ✅ | Cloud storage bucket name |
-| `AI_SERVICE_URL` | ⚠️ Optional | AI classification service URL |
+| `JWT_ISSUER` | ✅ | JWT token issuer name |
+| `JWT_AUDIENCE` | ✅ | JWT token audience name |
+| `NEXT_PUBLIC_API_URL` | ✅ | Backend API base URL used by the frontend |
 
 ---
 
@@ -407,7 +419,7 @@ npx openapi-typescript docs/openapi.yaml -o src/types/api.ts  # Regenerate API t
 
 | # | Decision | Rationale |
 |---|---|---|
-| ADR-01 | C# .NET 8 Backend | Stable LTS, strong typing, EF Core |
+| ADR-01 | C# .NET 9 Backend | Stable LTS, strong typing, EF Core |
 | ADR-02 | Next.js 14 App Router | Route groups per role, SSR, PWA ready |
 | ADR-03 | Clean Architecture | Domain logic decoupled from DB/framework |
 | ADR-04 | CQRS with MediatR | Clear read/write separation |
