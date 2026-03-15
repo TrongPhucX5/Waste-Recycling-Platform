@@ -25,3 +25,8 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Custom Gradient for Hero Section */
+.hero-gradient {
+  background: linear-gradient(180deg, #37474F 0%, #105E60 40%, #0AA468 100%);
+}
