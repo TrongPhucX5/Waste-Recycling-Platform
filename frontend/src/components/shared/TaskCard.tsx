@@ -130,7 +130,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             variant="primary"
             size="sm"
             className="w-full"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent) => {
               e.preventDefault();
               onActionClick?.();
             }}

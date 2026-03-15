@@ -28,7 +28,6 @@ export const RewardCard: React.FC<RewardCardProps> = ({
   onRedeemClick,
 }) => {
   const canRedeem = currentPoints >= points && available;
-  const progressPercentage = (currentPoints / points) * 100;
 
   return (
     <Link href={`/rewards/${id}`}>
@@ -89,7 +88,7 @@ export const RewardCard: React.FC<RewardCardProps> = ({
             size="sm"
             className="w-full"
             disabled={!canRedeem}
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent) => {
               e.preventDefault();
               onRedeemClick?.();
             }}
