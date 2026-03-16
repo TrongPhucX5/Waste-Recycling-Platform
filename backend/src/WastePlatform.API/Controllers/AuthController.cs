@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WastePlatform.Application.Auth.Commands;
+using WastePlatform.Application.Common.DTOs;
 using WastePlatform.Domain.Enums;
 using WastePlatform.Infrastructure.Services;
 
@@ -57,11 +58,7 @@ public class AuthController : ControllerBase
         try
         {
             var result = await _authService.RegisterAsync(cmd);
-            return Ok(new
-            {
-                message = "Tạo tài khoản thành công. Bạn có thể đăng nhập ngay",
-                user = result
-            });
+            return Ok(result);
         }
         catch (InvalidOperationException ex)
         {

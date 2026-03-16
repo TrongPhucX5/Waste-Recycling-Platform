@@ -1,20 +1,34 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { Input, Button, Card, Select } from "@/components/ui";
+import { Input, Button } from "@/components/ui";
 import { useForm } from "@/hooks/useForm";
-import { User, Mail, Lock, ChevronDown, Briefcase } from "lucide-react";
+import { useAuth, ApiError } from "@/contexts/AuthContext";
+import { type UserRole } from "@/lib/api/auth";
+import {
+  User,
+  Mail,
+  Lock,
+  ChevronDown,
+  Briefcase,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
 
 interface RegisterValues {
-  name?: string;
-  email?: string;
-  role?: string;
-  password?: string;
-  confirmPassword?: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  password: string;
+  confirmPassword: string;
 }
 
 const RegisterPage = () => {
+  const { register } = useAuth();
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
   const { values, errors, handleChange, handleSubmit, isSubmitting } =
     useForm<RegisterValues>({
       initialValues: {
@@ -24,32 +38,48 @@ const RegisterPage = () => {
         password: "",
         confirmPassword: "",
       },
-      onSubmit: async (values: RegisterValues) => {
-        // Implement register logic
-        console.log("Register submitted:", values);
-        // Simulate API
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      onSubmit: async (values) => {
+        setApiError(null);
+        setSuccessMsg(null);
+        try {
+          await register(values.name, values.email, values.password, values.role);
+          setSuccessMsg("Đăng ký thành công! Đang chuyển hướng...");
+        } catch (err) {
+          if (err instanceof ApiError) {
+            if (err.status === 409) {
+              setApiError("Email này đã được đăng ký. Vui lòng dùng email khác.");
+            } else if (err.status === 400) {
+              setApiError("Thông tin không hợp lệ. Vui lòng kiểm tra lại.");
+            } else if (err.status === 0) {
+              setApiError("Không thể kết nối đến máy chủ. Vui lòng thử lại.");
+            } else {
+              setApiError(err.message || "Đã có lỗi xảy ra. Vui lòng thử lại.");
+            }
+          } else {
+            setApiError("Đã có lỗi xảy ra. Vui lòng thử lại.");
+          }
+        }
       },
-      validate: (values: RegisterValues) => {
-        const errors: { [key: string]: string } = {};
+      validate: (values) => {
+        const errors: Record<string, string> = {};
         if (!values.name) {
-          errors.name = "Full name is required";
+          errors.name = "Họ và tên là bắt buộc";
         }
         if (!values.email) {
-          errors.email = "Email is required";
+          errors.email = "Email là bắt buộc";
         } else if (!/\S+@\S+\.\S+/.test(values.email)) {
-          errors.email = "Email is invalid";
+          errors.email = "Email không hợp lệ";
         }
         if (!values.password) {
-          errors.password = "Password is required";
+          errors.password = "Mật khẩu là bắt buộc";
         } else if (values.password.length < 8) {
-          errors.password = "Password must be at least 8 characters";
+          errors.password = "Mật khẩu phải có ít nhất 8 ký tự";
         }
         if (values.confirmPassword !== values.password) {
-          errors.confirmPassword = "Passwords do not match";
+          errors.confirmPassword = "Mật khẩu xác nhận không khớp";
         }
         if (!values.role) {
-          errors.role = "Role is required";
+          errors.role = "Vai trò là bắt buộc";
         }
         return errors;
       },
@@ -63,6 +93,22 @@ const RegisterPage = () => {
         </h2>
         <div className="w-8 h-1 bg-[#0AA468] mx-auto rounded-full"></div>
       </div>
+
+      {/* API error banner */}
+      {apiError && (
+        <div className="mb-4 flex items-start gap-2 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span>{apiError}</span>
+        </div>
+      )}
+
+      {/* Success banner */}
+      {successMsg && (
+        <div className="mb-4 flex items-start gap-2 rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+          <CheckCircle size={16} className="mt-0.5 shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Input
@@ -93,7 +139,7 @@ const RegisterPage = () => {
           className="border-none rounded-none bg-[#EBF2FA] focus:ring-0 px-0 py-3 placeholder:text-gray-500 text-sm text-gray-700"
         />
 
-        {/* Custom styling for Select to match the theme */}
+        {/* Role selector */}
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-0 flex items-center pointer-events-none text-gray-400">
             <Briefcase size={18} />
@@ -102,18 +148,17 @@ const RegisterPage = () => {
             id="role"
             name="role"
             required
-            aria-label="Register as"
+            aria-label="Vai trò"
             value={values.role}
             onChange={handleChange}
             className={`
-                w-full py-3 pl-10 border-none rounded-none bg-[#EBF2FA]
-                focus:outline-none focus:ring-0
-                transition-colors text-sm text-gray-700
-                ${errors.role ? "border-red-500" : ""}
+              w-full py-3 pl-10 border-none rounded-none bg-[#EBF2FA]
+              focus:outline-none focus:ring-0
+              transition-colors text-sm text-gray-700
+              ${errors.role ? "border-red-500" : ""}
             `}
           >
             <option value="citizen">Người Dân (Cá Nhân)</option>
-            <option value="collector">Người Thu Gom</option>
             <option value="enterprise">Doanh Nghiệp (Kinh Doanh)</option>
           </select>
           {errors.role && (
@@ -170,9 +215,9 @@ const RegisterPage = () => {
           href="/login"
           className="text-xs font-bold uppercase tracking-widest hover:text-[#088F5A] transition-colors"
         >
-            Đăng Nhập
+          Đăng Nhập
         </Link>
-         <Link href="/login" className="text-green-400 animate-bounce mt-1 hover:text-[#088F5A] transition-colors cursor-pointer">
+        <Link href="/login" className="text-green-400 animate-bounce mt-1 hover:text-[#088F5A] transition-colors cursor-pointer">
           <ChevronDown size={24} />
         </Link>
       </div>

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using WastePlatform.Application.Auth;
 using WastePlatform.Application.Auth.Commands;
+using WastePlatform.Application.Common.DTOs;
 using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Domain.Entities;
 using WastePlatform.Domain.Enums;
@@ -20,19 +20,23 @@ public class AuthService
     }
 
     // ── Register ────────────────────────────────────────────────────────
-    // ⚠️ Public registration - always creates Citizen account
-    public async Task<AuthResponse> RegisterAsync(RegisterCommand cmd)
+    public async Task<AuthResponseDto> RegisterAsync(RegisterCommand cmd)
     {
         if (await _db.Users.AnyAsync(u => u.Email == cmd.Email.ToLower()))
             throw new InvalidOperationException("Email đã được sử dụng.");
 
+        // Validate role - only allow Citizen and Enterprise during public registration
+        if (cmd.Role != UserRole.Citizen && cmd.Role != UserRole.Enterprise)
+            throw new InvalidOperationException(
+                $"Role '{cmd.Role}' không thể đăng ký tự động. " +
+                "Collector phải được thêm bởi Enterprise, Admin phải được tạo bởi hệ thống.");
+
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(cmd.Password);
-        // ⚠️ Force role to Citizen for public registration
         var user = User.Create(
             email: cmd.Email.ToLower().Trim(),
             passwordHash: passwordHash,
             fullName: cmd.FullName.Trim(),
-            role: UserRole.Citizen  // ← Always Citizen
+            role: cmd.Role
         );
 
         _db.Users.Add(user);
@@ -42,7 +46,7 @@ public class AuthService
     }
 
     // ── Login ────────────────────────────────────────────────────────────
-    public async Task<AuthResponse> LoginAsync(LoginCommand cmd)
+    public async Task<AuthResponseDto> LoginAsync(LoginCommand cmd)
     {
         var user = await _db.Users
             .FirstOrDefaultAsync(u => u.Email == cmd.Email.ToLower());
@@ -57,17 +61,19 @@ public class AuthService
     }
 
     // ── Helper ───────────────────────────────────────────────────────────
-    private AuthResponse BuildResponse(User user)
+    private AuthResponseDto BuildResponse(User user)
     {
         var token = _jwtService.GenerateToken(user);
-        return new AuthResponse
+        return new AuthResponseDto
         {
-            Token     = token,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            UserId    = user.Id,
-            FullName  = user.FullName,
-            Email     = user.Email,
-            Role      = user.Role.ToString()
+            Token = token,
+            User = new UserDto
+            {
+                Id = user.Id.ToString(),
+                FullName = user.FullName,
+                Email = user.Email,
+                Role = user.Role.ToString().ToLower()
+            }
         };
     }
 }

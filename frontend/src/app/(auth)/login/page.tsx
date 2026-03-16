@@ -1,38 +1,54 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Input, Button } from "@/components/ui";
 import { useForm } from "@/hooks/useForm";
-import { User, Lock, ChevronDown } from "lucide-react";
+import { useAuth, ApiError } from "@/contexts/AuthContext";
+import { User, Lock, ChevronDown, AlertCircle, CheckCircle } from "lucide-react";
 
 interface LoginValues {
-  email?: string;
-  password?: string;
+  email: string;
+  password: string;
 }
 
 const LoginPage = () => {
+  const { login } = useAuth();
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
   const { values, errors, handleChange, handleSubmit, isSubmitting } =
     useForm<LoginValues>({
-      initialValues: {
-        email: "",
-        password: "",
+      initialValues: { email: "", password: "" },
+      onSubmit: async (values) => {
+        setApiError(null);
+        setSuccessMsg(null);
+        try {
+          await login(values.email, values.password);
+          setSuccessMsg("Đăng nhập thành công! Đang chuyển hướng...");
+        } catch (err) {
+          if (err instanceof ApiError) {
+            if (err.status === 401 || err.status === 404) {
+              setApiError("Email hoặc mật khẩu không đúng.");
+            } else if (err.status === 0) {
+              setApiError("Không thể kết nối đến máy chủ. Vui lòng thử lại.");
+            } else {
+              setApiError(err.message || "Đã có lỗi xảy ra. Vui lòng thử lại.");
+            }
+          } else {
+            setApiError("Đã có lỗi xảy ra. Vui lòng thử lại.");
+          }
+        }
       },
-      onSubmit: async (values: LoginValues) => {
-        // Implement login logic here
-        console.log("Login submitted:", values);
-        // Simulate API call delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      },
-      validate: (values: LoginValues) => {
-        const errors: { [key: string]: string } = {};
+      validate: (values) => {
+        const errors: Record<string, string> = {};
         if (!values.email) {
-          errors.email = "Email is required";
+          errors.email = "Email là bắt buộc";
         } else if (!/\S+@\S+\.\S+/.test(values.email)) {
-          errors.email = "Email is invalid";
+          errors.email = "Email không hợp lệ";
         }
         if (!values.password) {
-          errors.password = "Password is required";
+          errors.password = "Mật khẩu là bắt buộc";
         }
         return errors;
       },
@@ -47,6 +63,22 @@ const LoginPage = () => {
         <div className="w-10 h-1 bg-[#0AA468] mx-auto rounded-full opacity-60"></div>
       </div>
 
+      {/* API error banner */}
+      {apiError && (
+        <div className="mb-4 flex items-start gap-2 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span>{apiError}</span>
+        </div>
+      )}
+
+      {/* Success banner */}
+      {successMsg && (
+        <div className="mb-4 flex items-start gap-2 rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+          <CheckCircle size={16} className="mt-0.5 shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
+
       <form
         className="space-y-6"
         onSubmit={(e) => {
@@ -59,7 +91,7 @@ const LoginPage = () => {
           type="email"
           autoComplete="email"
           required
-          placeholder="admin"
+          placeholder="Địa chỉ Email"
           value={values.email}
           onChange={handleChange}
           error={errors.email}
@@ -73,7 +105,7 @@ const LoginPage = () => {
           type="password"
           autoComplete="current-password"
           required
-          placeholder="••••••"
+          placeholder="Mật khẩu"
           value={values.password}
           onChange={handleChange}
           error={errors.password}
