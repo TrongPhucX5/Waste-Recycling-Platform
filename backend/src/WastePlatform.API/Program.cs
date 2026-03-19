@@ -66,6 +66,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Static files for uploads
+app.UseStaticFiles();
+
 // NOTE: No UseHttpsRedirection() — Docker runs plain HTTP on port 8080
 app.UseCors("AllowAll");
 app.UseAuthentication();

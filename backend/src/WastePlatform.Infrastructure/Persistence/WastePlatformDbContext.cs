@@ -170,6 +170,8 @@ public class WastePlatformDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.ReportId).HasColumnName("report_id");
             entity.Property(e => e.ImageUrl).HasColumnName("image_url").IsRequired().HasMaxLength(500);
+            entity.Property(e => e.SortOrder).HasColumnName("sort_order");
+            entity.Property(e => e.UploadedAt).HasColumnName("uploaded_at");
             
             entity.HasOne(e => e.WasteReport)
                 .WithMany(r => r.Images)
