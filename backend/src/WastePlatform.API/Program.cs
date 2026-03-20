@@ -2,9 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Reflection; 
 using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Infrastructure.Persistence;
 using WastePlatform.Infrastructure.Services;
+// Thêm thư mục chứa UserRepository (điều chỉnh lại nếu bạn để thư mục khác nhé)
+using WastePlatform.Infrastructure.Persistence.Repositories; 
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,6 +43,14 @@ builder.Services.AddAuthorization();
 // ── Application Services ─────────────────────────────────────────────
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<AuthService>();
+
+// 👉 ĐÃ THÊM: Đăng ký UserRepository để chọc xuống Database
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+
+// Đăng ký MediatR để xử lý CQRS (Queries/Commands)
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));
 
 // ── CORS ─────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
