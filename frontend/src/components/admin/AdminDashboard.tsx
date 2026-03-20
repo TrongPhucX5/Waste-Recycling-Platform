@@ -3,8 +3,6 @@ import React, { useState } from 'react';
 import { Users, Activity, AlertTriangle, Cpu, LayoutDashboard } from 'lucide-react';
 import { UserManagement } from './UserManagement';
 import { SystemActivity } from './SystemActivity';
-import { DisputeResolution } from './DisputeResolution';
-import { AIClassificationTool } from './AIClassificationTool';
 
 type Tab = 'dashboard' | 'users' | 'activity' | 'disputes' | 'ai-tools';
 
@@ -14,9 +12,6 @@ export const AdminDashboard: React.FC = () => {
   const tabs = [
     { id: 'dashboard' as Tab, label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'users' as Tab, label: 'Quản lý người dùng', icon: Users },
-    { id: 'activity' as Tab, label: 'Giám sát hệ thống', icon: Activity },
-    { id: 'disputes' as Tab, label: 'Giải quyết khiếu nại', icon: AlertTriangle },
-    { id: 'ai-tools' as Tab, label: 'AI Phân loại rác (Demo)', icon: Cpu },
   ];
 
   const renderContent = () => {
@@ -27,10 +22,6 @@ export const AdminDashboard: React.FC = () => {
         return <UserManagement />;
       case 'activity':
         return <SystemActivity />; // Reusing for now or could be more detailed logs
-      case 'disputes':
-        return <DisputeResolution />;
-      case 'ai-tools':
-        return <AIClassificationTool />;
       default:
         return <SystemActivity />;
     }
