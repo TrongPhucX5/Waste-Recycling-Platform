@@ -4,6 +4,7 @@ services:
   # ── MySQL Database ──────────────────────────────────────────────
   db:
     image: mysql:8.0
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     container_name: waste_db
     restart: unless-stopped
     environment:
@@ -34,7 +35,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      ConnectionStrings__DefaultConnection: "Server=db;Port=3306;Database=${MYSQL_DATABASE:-WastePlatformDB};User=${MYSQL_USER:-wasteuser};Password=${MYSQL_PASSWORD:-wastepassword};"
+      ConnectionStrings__DefaultConnection: "Server=db;Port=3306;Database=${MYSQL_DATABASE:-WastePlatformDB};User=${MYSQL_USER:-wasteuser};Password=${MYSQL_PASSWORD:-wastepassword};CharSet=utf8mb4;"
       JwtSettings__SecretKey: ${JWT_SECRET:-your-super-secret-key-min-32-chars!!}
       JwtSettings__Issuer: ${JWT_ISSUER:-WastePlatform}
       JwtSettings__Audience: ${JWT_AUDIENCE:-WastePlatformClient}
@@ -51,10 +52,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api}
     container_name: waste_frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api}
     ports:
       - "3000:3000"
     depends_on:

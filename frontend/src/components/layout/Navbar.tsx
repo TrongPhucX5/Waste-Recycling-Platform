@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavMenuItem {
   label: string;
@@ -24,6 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { isAuthenticated, user, logout } = useAuth();
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -73,26 +75,44 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-8">
-            <Link
-              href="/login"
-              className={`text-sm font-bold uppercase tracking-wider transition-colors ${
-                pathname === "/login"
-                ? "text-[#00C853]"
-                : (transparent ? "text-white/90 hover:text-[#00C853]" : "text-gray-400 hover:text-[#00C853]")
-              }`}
-            >
-              ĐĂNG NHẬP
-            </Link>
-            <Link
-              href="/register"
-              className={`text-sm font-bold uppercase tracking-wider transition-colors ${
-                pathname === "/register"
-                ? "text-[#00C853]"
-                : (transparent ? "text-white/90 hover:text-[#00C853]" : "text-gray-400 hover:text-[#00C853]")
-              }`}
-            >
-              ĐĂNG KÝ
-            </Link>
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-4">
+                <span className={`text-sm font-bold tracking-wider ${transparent ? "text-white" : "text-gray-700"}`}>
+                  Xin chào, {user.fullName}
+                </span>
+                <button
+                  onClick={logout}
+                  className={`text-sm font-bold uppercase tracking-wider transition-colors ${
+                    transparent ? "text-white/90 hover:text-red-400" : "text-gray-400 hover:text-red-500"
+                  }`}
+                >
+                  ĐĂNG XUẤT
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className={`text-sm font-bold uppercase tracking-wider transition-colors ${
+                    pathname === "/login"
+                    ? "text-[#00C853]"
+                    : (transparent ? "text-white/90 hover:text-[#00C853]" : "text-gray-400 hover:text-[#00C853]")
+                  }`}
+                >
+                  ĐĂNG NHẬP
+                </Link>
+                <Link
+                  href="/register"
+                  className={`text-sm font-bold uppercase tracking-wider transition-colors ${
+                    pathname === "/register"
+                    ? "text-[#00C853]"
+                    : (transparent ? "text-white/90 hover:text-[#00C853]" : "text-gray-400 hover:text-[#00C853]")
+                  }`}
+                >
+                  ĐĂNG KÝ
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}

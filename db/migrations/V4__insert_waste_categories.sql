@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 -- Insert sample waste categories
 INSERT INTO waste_categories (id, name, description) VALUES
 (1, 'Rác thải sinh hoạt', 'Rác thải từ nhà ở, cơ quan, cửa hàng'),
