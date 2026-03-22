@@ -59,4 +59,15 @@ export const reportApi = {
       }>;
     }>(`/reports/my-reports?page=${page}&pageSize=${pageSize}`);
   },
+
+  /**
+   * Fetches the detailed information of a specific waste report by ID.
+   * @param id The unique identifier of the report.
+   */
+  getReportById: (id: string) => {
+    return apiClient.get<{
+      message: string;
+      report: any;
+    }>(`/reports/${id}`);
+  },
 };

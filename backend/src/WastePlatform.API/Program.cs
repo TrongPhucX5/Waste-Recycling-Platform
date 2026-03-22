@@ -81,8 +81,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Static files for uploads
-app.UseStaticFiles();
+// Explicitly configure static files for the uploads directory
+var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, "uploads");
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(uploadsPath);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 // NOTE: No UseHttpsRedirection() — Docker runs plain HTTP on port 8080
 app.UseCors("AllowAll");
