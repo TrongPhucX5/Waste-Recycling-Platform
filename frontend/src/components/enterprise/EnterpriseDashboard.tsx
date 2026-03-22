@@ -1,10 +1,11 @@
 "use client";
-import React, { useState } from "react";
-import { LayoutDashboard, ClipboardList, Factory, Trophy } from "lucide-react";
+import { useState } from "react";
+import { LayoutDashboard, ClipboardList, Factory, Trophy, CheckSquare } from "lucide-react";
 import { EnterpriseOverview } from "./EnterpriseOverview";
 import { RequestManagement } from "./RequestManagement";
 import { CapacitySettings } from "./CapacitySettings";
 import { RewardConfiguration } from "./RewardConfiguration";
+import { EnterpriseTaskManagement } from "./EnterpriseTaskManagement";
 import { EnterpriseRequest } from "./types";
 
 // Mock Data
@@ -44,6 +45,7 @@ export const EnterpriseDashboard: React.FC = () => {
   const tabs = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "requests", label: "Requests", icon: ClipboardList },
+    { id: "tasks", label: "Task Assignment", icon: CheckSquare },
     { id: "capacity", label: "Capacity", icon: Factory },
     { id: "rewards", label: "Rewards", icon: Trophy },
   ];
@@ -87,6 +89,7 @@ export const EnterpriseDashboard: React.FC = () => {
                 onAssign={handleAssign}
             />
         )}
+        {activeTab === "tasks" && <EnterpriseTaskManagement />}
         {activeTab === "capacity" && <CapacitySettings capacity={capacity} onUpdate={setCapacity} />}
         {activeTab === "rewards" && <RewardConfiguration initialRules={rewardRules} />}
       </div>
