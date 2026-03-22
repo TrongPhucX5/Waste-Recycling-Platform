@@ -1,11 +1,19 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting;
 using WastePlatform.Application.Common.Interfaces;
 
 namespace WastePlatform.Infrastructure.Services;
 
 public class LocalFileStorageService : IFileStorageService
 {
-    public Task<string> SaveFileAsync(IFormFile file, string[] allowedExtensions, long maxSizeInBytes, CancellationToken cancellationToken = default)
+    private readonly IWebHostEnvironment _env;
+
+    public LocalFileStorageService(IWebHostEnvironment env)
+    {
+        _env = env;
+    }
+
+    public async Task<string> SaveFileAsync(IFormFile file, string[] allowedExtensions, long maxSizeInBytes, CancellationToken cancellationToken = default)
     {
         if (file == null || file.Length == 0)
         {
@@ -25,8 +33,18 @@ public class LocalFileStorageService : IFileStorageService
 
         var fileName = $"{Guid.NewGuid()}{fileExtension}";
         
-        // Preserve original behavior: only return the UUID filename. 
-        // Real systems would save to local disk or S3 bucket here.
-        return Task.FromResult(fileName);
+        var uploadsFolder = Path.Combine(_env.ContentRootPath, "uploads");
+        if (!Directory.Exists(uploadsFolder))
+        {
+            Directory.CreateDirectory(uploadsFolder);
+        }
+
+        var filePath = Path.Combine(uploadsFolder, fileName);
+        using (var fileStream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(fileStream, cancellationToken);
+        }
+
+        return fileName;
     }
 }

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Camera, MapPin, Upload, Trash2, AlertCircle } from "lucide-react";
+import { Camera, MapPin, Upload, Trash2, AlertCircle, X } from "lucide-react";
 import { categoryApi, WasteCategory } from "../../lib/api/categoryApi";
 import { reportApi } from "../../lib/api/reportApi";
 
@@ -11,7 +11,7 @@ interface ReportFormProps {
 export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGettingGPS, setIsGettingGPS] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [previews, setPreviews] = useState<string[]>([]);
   
   const [categories, setCategories] = useState<WasteCategory[]>([]);
   const [isLoadingCat, setIsLoadingCat] = useState(true);
@@ -21,7 +21,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
   const [latitude, setLatitude] = useState<number | "">("");
   const [longitude, setLongitude] = useState<number | "">("");
   const [description, setDescription] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,12 +68,18 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0]);
-      const reader = new FileReader();
-      reader.onload = (e) => setPreview(e.target?.result as string);
-      reader.readAsDataURL(e.target.files[0]);
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      setImageFiles(prev => [...prev, ...filesArray]);
+      
+      const newPreviews = filesArray.map(file => URL.createObjectURL(file));
+      setPreviews(prev => [...prev, ...newPreviews]);
     }
+  };
+
+  const removeImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const geocodeAddress = async (addr: string) => {
@@ -93,7 +99,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
     e.preventDefault();
     setError(null);
 
-    if (!selectedCategoryId || !imageFile || !address) {
+    if (!selectedCategoryId || imageFiles.length === 0 || !address) {
       setError("Vui lòng điền đầy đủ thông tin địa chỉ, ảnh và loại rác.");
       return;
     }
@@ -130,7 +136,11 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
       formData.append("Description", description);
       formData.append("Address", address);
       formData.append("AiSuggestion", "");
-      formData.append("Images", imageFile);
+      
+      // Append multiple images under the same key
+      imageFiles.forEach(file => {
+        formData.append("Images", file);
+      });
 
       await reportApi.createWasteReport(formData);
       
@@ -147,7 +157,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Tạo Báo Cáo Thu Gom</h2>
-        <p className="text-gray-500 mt-1">Cung cấp thông tin và hình ảnh để người thu gom đến nhận rác tái chế.</p>
+        <p className="text-gray-500 mt-1">Cung cấp thông tin và vài hình ảnh góc độ khác nhau để người thu gom dễ nhận biết rác tái chế.</p>
       </div>
 
       {error && (
@@ -159,25 +169,43 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Upload Image Section */}
-        <div className="border-2 border-dashed border-emerald-200 rounded-xl p-8 text-center bg-emerald-50/30 hover:bg-emerald-50/80 transition-colors relative group">
-          <input 
-            type="file" 
-            accept="image/*" 
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-            onChange={handleFileChange}
-            required
-          />
-          {preview ? (
-            <div className="relative w-full max-w-sm mx-auto h-48 rounded-lg overflow-hidden shadow-sm">
-              <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-            </div>
-          ) : (
+        <div className="space-y-4">
+          <div className="border-2 border-dashed border-emerald-200 rounded-xl p-8 text-center bg-emerald-50/30 hover:bg-emerald-50/80 transition-colors relative group">
+            <input 
+              type="file" 
+              accept="image/*" 
+              multiple
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+              onChange={handleFileChange}
+              required={imageFiles.length === 0}
+            />
             <div className="flex flex-col items-center pointer-events-none">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Camera size={32} />
               </div>
-              <h3 className="text-lg font-semibold text-emerald-800">Chụp hoặc Tải Ảnh Lên</h3>
-              <p className="text-sm text-emerald-600/70 mt-1">Hỗ trợ JPG, PNG • Max 5MB</p>
+              <h3 className="text-lg font-semibold text-emerald-800">Chụp hoặc Tải Lên Nhiều Ảnh Cùng Lúc</h3>
+              <p className="text-sm text-emerald-600/70 mt-1">Hỗ trợ JPG, PNG • Tối đa 5MB mỗi ảnh</p>
+            </div>
+          </div>
+
+          {/* Previews Grid */}
+          {previews.length > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 mt-4">
+              {previews.map((preview, index) => (
+                <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-emerald-100 shadow-sm group">
+                  <img src={preview} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button 
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors transform hover:scale-110"
+                      title="Xóa ảnh"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -261,14 +289,14 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
             className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-8 rounded-lg shadow-md shadow-emerald-500/30 transition-all disabled:opacity-70 flex items-center justify-center gap-2 text-lg"
           >
             {isSubmitting ? (
-              <span className="flex items-center gap-2">
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Đang Gửi...
-              </span>
+               <span className="flex items-center gap-2">
+                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                 Đang Gửi...
+               </span>
             ) : (
               <>
                 <Upload size={20} />
-                Tạo Báo Cáo Mới
+                Tạo Báo Cáo Có Đính Kèm ({imageFiles.length}) Ảnh
               </>
             )}
           </button>
