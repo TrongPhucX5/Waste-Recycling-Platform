@@ -1,7 +1,7 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using WastePlatform.Infrastructure.Persistence;
+using WastePlatform.Application.WasteCategories.Queries;
 
 namespace WastePlatform.API.Controllers;
 
@@ -9,17 +9,16 @@ namespace WastePlatform.API.Controllers;
 [Route("api/waste-categories")]
 public class WasteCategoryController : ControllerBase
 {
-    private readonly WastePlatformDbContext _context;
+    private readonly IMediator _mediator;
 
-    public WasteCategoryController(WastePlatformDbContext context)
+    public WasteCategoryController(IMediator mediator)
     {
-        _context = context;
+        _mediator = mediator;
     }
 
     /// <summary>Lấy danh sách tất cả các loại rác</summary>
     /// <remarks>
     /// Endpoint này trả về danh sách các loại rác có sẵn trong hệ thống
-    /// 
     /// Không yêu cầu xác thực - endpoint công khai
     /// </remarks>
     [HttpGet]
@@ -27,23 +26,13 @@ public class WasteCategoryController : ControllerBase
     {
         try
         {
-            var categories = await _context.WasteCategories
-                .OrderBy(c => c.Name)
-                .Select(c => new
-                {
-                    id = c.Id,
-                    name = c.Name,
-                    description = c.Description
-                })
-                .ToListAsync();
+            var data = await _mediator.Send(new GetAllCategoriesQuery());
 
-            var response = new
+            return Ok(new
             {
                 message = "Categories retrieved successfully",
-                data = categories
-            };
-
-            return Ok(response);
+                data = data
+            });
         }
         catch (Exception ex)
         {
@@ -57,26 +46,16 @@ public class WasteCategoryController : ControllerBase
     {
         try
         {
-            var category = await _context.WasteCategories
-                .Where(c => c.Id == id)
-                .Select(c => new
-                {
-                    id = c.Id,
-                    name = c.Name,
-                    description = c.Description
-                })
-                .FirstOrDefaultAsync();
+            var data = await _mediator.Send(new GetCategoryByIdQuery { Id = id });
 
-            if (category == null)
+            if (data == null)
                 return NotFound(new { message = "Category not found" });
 
-            var response = new
+            return Ok(new
             {
                 message = "Category retrieved successfully",
-                data = category
-            };
-
-            return Ok(response);
+                data = data
+            });
         }
         catch (Exception ex)
         {
