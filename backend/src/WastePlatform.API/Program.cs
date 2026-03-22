@@ -46,8 +46,12 @@ builder.Services.AddScoped<AuthService>();
 
 // 👉 ĐÃ THÊM: Đăng ký UserRepository để chọc xuống Database
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+
+// Repositories for Reports and Categories
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
+builder.Services.AddScoped<IWasteCategoryRepository, WasteCategoryRepository>();
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
 // Đăng ký MediatR để xử lý CQRS (Queries/Commands)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));
