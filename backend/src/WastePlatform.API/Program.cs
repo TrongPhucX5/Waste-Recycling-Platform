@@ -47,6 +47,7 @@ builder.Services.AddScoped<AuthService>();
 // 👉 ĐÃ THÊM: Đăng ký UserRepository để chọc xuống Database
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
 
 // Repositories for Reports and Categories
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
