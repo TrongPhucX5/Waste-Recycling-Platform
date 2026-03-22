@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Clock, CheckCircle2, Truck, AlertCircle, MessageSquare, MapPin } from "lucide-react";
 import { reportApi } from "../../lib/api/reportApi";
+import { ReportDetailModal } from "./ReportDetailModal";
 
 type ReportStatus = "Pending" | "Accepted" | "Assigned" | "Collected";
 
@@ -22,6 +23,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 
 export const ReportList: React.FC = () => {
   const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [reports, setReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export const ReportList: React.FC = () => {
         </div>
         <button 
           onClick={loadReports}
-          className="text-sm font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg"
+          className="text-sm font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors"
         >
           Làm mới
         </button>
@@ -76,11 +78,15 @@ export const ReportList: React.FC = () => {
       ) : (
         <div className="grid gap-4">
           {reports.map((report) => (
-            <div key={report.id} className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+            <div 
+              key={report.id} 
+              onClick={() => setSelectedReportId(report.id)}
+              className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-emerald-200 group"
+            >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center justify-between md:justify-start gap-4">
-                    <span className="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded">
+                    <span className="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded group-hover:bg-emerald-50 group-hover:text-emerald-700 transition-colors">
                       {report.id.substring(0, 8).toUpperCase()}
                     </span>
                     <StatusBadge status={report.status} />
@@ -108,8 +114,11 @@ export const ReportList: React.FC = () => {
 
                 <div className="flex shrink-0 gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-gray-100 md:border-l md:pl-6">
                   <button
-                    onClick={() => setFeedbackOpen(feedbackOpen === report.id ? null : report.id)}
-                    className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-red-600 transition-colors px-3 py-2 rounded-lg hover:bg-red-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFeedbackOpen(feedbackOpen === report.id ? null : report.id);
+                    }}
+                    className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-red-600 transition-colors px-3 py-2 rounded-lg hover:bg-red-50 z-10"
                     title="Gửi Khiếu Nại / Phản Hồi"
                   >
                     <AlertCircle size={18} /> Khiếu Nại
@@ -119,7 +128,10 @@ export const ReportList: React.FC = () => {
 
               {/* Feedback Form Expandable */}
               {feedbackOpen === report.id && (
-                <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/50 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+                <div 
+                  className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/50 rounded-xl p-4 animate-in fade-in slide-in-from-top-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-3">
                     <MessageSquare size={16} className="text-red-500" /> Gửi Phản Hồi
                   </h4>
@@ -137,6 +149,14 @@ export const ReportList: React.FC = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Render Modal if a report is selected */}
+      {selectedReportId && (
+        <ReportDetailModal 
+          reportId={selectedReportId} 
+          onClose={() => setSelectedReportId(null)} 
+        />
       )}
     </div>
   );
