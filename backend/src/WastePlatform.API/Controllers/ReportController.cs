@@ -231,6 +231,51 @@ public class ReportController : ControllerBase
         }
     }
 
+    /// <summary>Từ chối báo cáo (Enterprise)</summary>
+    [HttpPost("{id}/reject")]
+    [Authorize(Roles = "Enterprise")]
+    public async Task<IActionResult> RejectReport(Guid id, [FromBody] RejectReportRequest request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                return Unauthorized(new { message = "Invalid or missing user ID" });
+
+            // Get the report
+            var report = await _context.WasteReports.FindAsync(id);
+            if (report == null)
+                return NotFound(new { message = "Report not found" });
+
+            // Check if report is in valid state
+            if (report.Status != ReportStatus.Pending)
+                return BadRequest(new { message = $"Report can only be rejected if it is in Pending status. Current status: {report.Status}" });
+
+            // Update report status to Rejected
+            report.Reject();
+
+            // Save the changes
+            _context.WasteReports.Update(report);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Report rejected successfully",
+                reportId = id,
+                reportStatus = report.Status.ToString(),
+                rejectionReason = request?.Reason
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+        }
+    }
+
     /// <summary>Lấy danh sách báo cáo rác mà doanh nghiệp có thể xử lý</summary>
     [HttpGet("enterprise/available")]
     [Authorize(Roles = "Enterprise")]
@@ -277,4 +322,9 @@ public class ReportController : ControllerBase
             return StatusCode(500, new { message = "Internal server error", error = ex.Message });
         }
     }
+}
+
+public class RejectReportRequest
+{
+    public string? Reason { get; set; }
 }
