@@ -230,4 +230,51 @@ public class ReportController : ControllerBase
             return StatusCode(500, new { message = "Internal server error", error = ex.Message });
         }
     }
+
+    /// <summary>Lấy danh sách báo cáo rác mà doanh nghiệp có thể xử lý</summary>
+    [HttpGet("enterprise/available")]
+    [Authorize(Roles = "Enterprise")]
+    public async Task<IActionResult> GetEnterpriseAvailableReports([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? status = null)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                return Unauthorized(new { message = "Invalid or missing user ID in token" });
+
+            // Get enterprise for current user
+            var enterprise = await _context.Enterprises
+                .FirstOrDefaultAsync(e => e.UserId == userId);
+            if (enterprise == null)
+                return Unauthorized(new { message = "Enterprise profile not found for current user" });
+
+            // Get reports available for this enterprise
+            var result = await _mediator.Send(new GetEnterpriseReportsQuery
+            {
+                EnterpriseId = enterprise.Id,
+                Page = page,
+                PageSize = pageSize,
+                Status = status
+            });
+
+            var response = new
+            {
+                message = "Available reports retrieved successfully",
+                pagination = new
+                {
+                    page = page,
+                    pageSize = pageSize,
+                    total = result.Total,
+                    totalPages = result.TotalPages
+                },
+                reports = result.Reports
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+        }
+    }
 }

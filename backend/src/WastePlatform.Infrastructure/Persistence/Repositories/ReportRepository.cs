@@ -74,6 +74,38 @@ public class ReportRepository : IReportRepository
         return (reports, total);
     }
 
+    public async Task<(IEnumerable<WasteReport> Reports, int Total)> GetEnterpriseReportsAsync(Guid enterpriseId, int page, int pageSize, ReportStatus? status, CancellationToken cancellationToken = default)
+    {
+        // Get all waste category IDs that this enterprise handles
+        var enterpriseWasteCategories = await _context.EnterpriseWasteTypes
+            .Where(ewt => ewt.EnterpriseId == enterpriseId)
+            .Select(ewt => ewt.WasteCategoryId)
+            .ToListAsync(cancellationToken);
+
+        // Get reports that match the enterprise's waste categories and haven't been assigned yet
+        var query = _context.WasteReports
+            .Where(r => enterpriseWasteCategories.Contains(r.WasteCategoryId ?? 0) && r.CollectionTask == null)
+            .Include(r => r.Citizen)
+            .Include(r => r.WasteCategory)
+            .Include(r => r.Images)
+            .AsQueryable();
+
+        if (status.HasValue)
+        {
+            query = query.Where(r => r.Status == status.Value);
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+
+        var reports = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (reports, total);
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         await _context.SaveChangesAsync(cancellationToken);
