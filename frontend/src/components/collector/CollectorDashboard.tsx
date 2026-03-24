@@ -1,309 +1,376 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { LayoutDashboard, CheckCircle, MapPin, Search } from "lucide-react";
-import { TaskCard } from "./TaskCard";
-import { HistoryList } from "./HistoryList";
-import { Modal, Button, Input, Badge } from "../ui";
-import { collectorTaskApi, CollectionTask, CollectorStats } from "../../lib/api/collectorTaskApi";
+import {
+  Truck,
+  CheckCircle,
+  Clock,
+  MapPin,
+  LogOut,
+  Menu,
+  X,
+  Home,
+  History,
+  Settings,
+  HelpCircle,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import { CollectorStats } from "./CollectorStats";
+import { TaskList } from "./TaskList";
+import { HistoryTab } from "./HistoryTab";
+import { TaskDetailModal } from "./TaskDetailModal";
+
+type Tab = "dashboard" | "tasks" | "history" | "settings";
+
+interface CollectionTask {
+  id: string;
+  taskNumber: string;
+  reportNumber: string;
+  location: string;
+  address: string;
+  wasteType: string;
+  estimatedWeight: number;
+  status: "pending" | "assigned" | "on_the_way" | "collected";
+  createdAt: string;
+  latitude: number;
+  longitude: number;
+  citizenName: string;
+  contactPhone: string;
+}
+
+interface CollectorStatsData {
+  totalAssigned: number;
+  totalOnTheWay: number;
+  totalCollected: number;
+  totalWeightKg: number;
+  earnedToday: number;
+}
 
 export const CollectorDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"tasks" | "history">("tasks");
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [stats, setStats] = useState<CollectorStatsData>({
+    totalAssigned: 8,
+    totalOnTheWay: 3,
+    totalCollected: 24,
+    totalWeightKg: 1240,
+    earnedToday: 450,
+  });
   const [tasks, setTasks] = useState<CollectionTask[]>([]);
-  const [stats, setStats] = useState<CollectorStats>({ totalAssigned: 0, totalOnTheWay: 0, totalCollected: 0, totalWeightKg: 0 });
   const [selectedTask, setSelectedTask] = useState<CollectionTask | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [collectionImage, setCollectionImage] = useState<File | null>(null);
-  const [confirmNote, setConfirmNote] = useState("");
-  const [weightKg, setWeightKg] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  const tabs = [
+    { id: "dashboard" as Tab, label: "Tổng Quan", icon: Home },
+    { id: "tasks" as Tab, label: "Công Việc", icon: Truck },
+    { id: "history" as Tab, label: "Lịch Sử", icon: History },
+    { id: "settings" as Tab, label: "Cài Đặt", icon: Settings },
+  ];
 
   useEffect(() => {
-    fetchData();
-  }, [activeTab]);
+    loadMockData();
+  }, []);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [statsData, tasksData] = await Promise.all([
-        collectorTaskApi.getStats(),
-        collectorTaskApi.getTasks() // can filter server side or client side
-      ]);
-      setStats(statsData);
-      setTasks(tasksData.filter(t => t.status !== "Collected"));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const loadMockData = () => {
+    setTasks([
+      {
+        id: "1",
+        taskNumber: "#T-001",
+        reportNumber: "#R-1001",
+        location: "123 Cầu Giấy, Hà Nội",
+        address: "123 Cầu Giấy, Hà Nội",
+        wasteType: "Hữu cơ",
+        estimatedWeight: 45,
+        status: "assigned",
+        createdAt: "2026-03-23 09:00",
+        latitude: 21.0285,
+        longitude: 105.8542,
+        citizenName: "Nguyễn Văn A",
+        contactPhone: "0901234567",
+      },
+      {
+        id: "2",
+        taskNumber: "#T-002",
+        reportNumber: "#R-1002",
+        location: "456 Trần Duy Hưng, Hà Nội",
+        address: "456 Trần Duy Hưng, Hà Nội",
+        wasteType: "Tái chế",
+        estimatedWeight: 30,
+        status: "on_the_way",
+        createdAt: "2026-03-23 10:30",
+        latitude: 21.0333,
+        longitude: 105.8656,
+        citizenName: "Trần Thị B",
+        contactPhone: "0902345678",
+      },
+      {
+        id: "3",
+        taskNumber: "#T-003",
+        reportNumber: "#R-1003",
+        location: "789 Hàng Bài, Hà Nội",
+        address: "789 Hàng Bài, Hà Nội",
+        wasteType: "Hữu cơ",
+        estimatedWeight: 50,
+        status: "assigned",
+        createdAt: "2026-03-23 11:15",
+        latitude: 21.0297,
+        longitude: 105.8521,
+        citizenName: "Lê Văn C",
+        contactPhone: "0903456789",
+      },
+    ]);
   };
 
-  const handleUpdateStatus = (task: CollectionTask) => {
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
+
+  const handleOpenModal = (task: CollectionTask) => {
     setSelectedTask(task);
     setIsModalOpen(true);
   };
 
-  const closeModal = () => {
+  const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedTask(null);
-    setCollectionImage(null);
-    setConfirmNote("");
-    setWeightKg("");
   };
 
-  const handleSetOnTheWay = async (id: string) => {
-    try {
-      await collectorTaskApi.setOnTheWay(id);
-      await fetchData(); // refresh data
-      closeModal();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update task status.");
-    }
+  const handleUpdateTask = (updatedTask: CollectionTask) => {
+    setTasks(
+      tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+    );
+    handleCloseModal();
   };
 
-  const handleCompleteCollection = async (id: string) => {
-    if (!weightKg || isNaN(Number(weightKg))) {
-      alert("Please enter a valid weight.");
-      return;
+  const renderContent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return <CollectorStats stats={stats} />;
+      case "tasks":
+        return (
+          <TaskList
+            tasks={tasks.filter((t) => t.status !== "collected")}
+            onSelectTask={handleOpenModal}
+          />
+        );
+      case "history":
+        return (
+          <HistoryTab
+            tasks={tasks.filter((t) => t.status === "collected")}
+          />
+        );
+      case "settings":
+        return <SettingsPage />;
+      default:
+        return <CollectorStats stats={stats} />;
     }
-
-    try {
-      const formData = new FormData();
-      formData.append("WeightKg", weightKg);
-      formData.append("Notes", confirmNote);
-      if (collectionImage) {
-        formData.append("Images", collectionImage);
-      }
-
-      await collectorTaskApi.completeTask(id, formData);
-      await fetchData(); // refresh data
-      closeModal();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to complete task.");
-    }
-  };
-
-  const renderModalContent = () => {
-    if (!selectedTask) return null;
-
-    if (selectedTask.status === "Assigned") {
-      return (
-        <div className="space-y-4">
-          <p className="text-gray-600">You are about to start pickup for task <b>#{selectedTask.id.substring(0,8)}</b>.</p>
-          <div className="bg-blue-50 p-4 rounded-md text-sm text-blue-700">
-             Ensure you have the necessary equipment and vehicle ready before proceeding.
-          </div>
-          <div className="flex justify-end gap-2 mt-6">
-            <Button variant="outline" onClick={closeModal}>Cancel</Button>
-            <Button onClick={() => handleSetOnTheWay(selectedTask.id)}>Confirm Start</Button>
-          </div>
-        </div>
-      );
-    }
-
-    if (selectedTask.status === "OnTheWay") {
-      return (
-        <div className="space-y-4">
-          <p className="text-gray-600">Complete collection for task <b>#{selectedTask.id.substring(0,8)}</b>.</p>
-          
-          <div>
-             <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg) *</label>
-             <Input 
-               type="number"
-               value={weightKg} 
-               onChange={(e) => setWeightKg(e.target.value)} 
-               placeholder="e.g. 25" 
-               required
-             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Proof of Collection (Image)</label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-emerald-500 transition-colors cursor-pointer bg-gray-50">
-               <div className="space-y-1 text-center">
-                 <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                   <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                 </svg>
-                 <div className="flex text-sm text-gray-600">
-                   <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-emerald-500">
-                     <span>Upload a file</span>
-                     <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCollectionImage(e.target.files?.[0] || null)} />
-                   </label>
-                   <p className="pl-1">or drag and drop</p>
-                 </div>
-                 <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-               </div>
-            </div>
-            {collectionImage && <p className="text-sm text-emerald-600 mt-2">Selected: {collectionImage.name}</p>}
-          </div>
-
-          <div>
-             <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-             <Input 
-               value={confirmNote} 
-               onChange={(e) => setConfirmNote(e.target.value)} 
-               placeholder="Additional notes about collection..." 
-             />
-          </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <Button variant="outline" onClick={closeModal}>Cancel</Button>
-            <Button 
-                onClick={() => handleCompleteCollection(selectedTask.id)}
-                disabled={!collectionImage || !weightKg}
-            >
-                Complete Collection
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    if (selectedTask.status === "Collected") {
-       return (
-        <div className="space-y-4">
-           <div className="bg-emerald-50 p-4 rounded-md flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-              <div>
-                 <h4 className="text-sm font-medium text-emerald-800">Task Completed</h4>
-                 <p className="text-sm text-emerald-700 mt-1">
-                    This task has been successfully collected and recorded.
-                 </p>
-              </div>
-           </div>
-           
-           <div className="grid grid-cols-2 gap-4 text-sm">
-             <div>
-                <span className="text-gray-500 block">Type</span>
-                <span className="font-medium">{selectedTask.report.categoryName}</span>
-             </div>
-             <div>
-                <span className="text-gray-500 block">Quantity</span>
-                <span className="font-medium">{selectedTask.collectedWeightKg} kg</span>
-             </div>
-              <div>
-                <span className="text-gray-500 block">Location</span>
-                <span className="font-medium truncate">{selectedTask.report.address}</span>
-             </div>
-             <div>
-                <span className="text-gray-500 block">Completed At</span>
-                <span className="font-medium">{new Date(selectedTask.completedAt || "").toLocaleString()}</span>
-             </div>
-           </div>
-
-           <div className="flex justify-end mt-6">
-             <Button variant="outline" onClick={closeModal}>Close</Button>
-           </div>
-        </div>
-       );
-    }
-    
-    return null;
   };
 
   return (
-    <div className="space-y-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
-                <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">Open Tasks</p>
-                   <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalAssigned}</p>
-                </div>
-                <div className="p-3 bg-blue-50 rounded-full text-blue-600">
-                   <LayoutDashboard className="h-6 w-6" />
-                </div>
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* Sidebar */}
+      <aside
+        className={`${
+          sidebarOpen ? "w-64" : "w-20"
+        } bg-white border-r border-gray-200 flex flex-col transition-all duration-300 hidden md:flex`}
+      >
+        {/* Logo */}
+        <div className="p-6 border-b border-gray-200 flex items-center justify-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#0AA468] to-[#067D54] rounded-lg flex items-center justify-center text-white font-bold">
+              🚚
             </div>
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
-                <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">On The Way</p>
-                   <p className="text-3xl font-bold text-purple-600 mt-1">{stats.totalOnTheWay}</p>
-                </div>
-                <div className="p-3 bg-purple-50 rounded-full text-purple-600">
-                   <MapPin className="h-6 w-6" />
-                </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
-                <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">Completed</p>
-                   <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.totalCollected}</p>
-                </div>
-                <div className="p-3 bg-emerald-50 rounded-full text-emerald-600">
-                   <CheckCircle className="h-6 w-6" />
-                </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
-                <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">Total Weight</p>
-                   <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.totalWeightKg} kg</p>
-                </div>
-                <div className="p-3 bg-emerald-50 rounded-full text-emerald-600">
-                   <CheckCircle className="h-6 w-6" />
-                </div>
-            </div>
+            {sidebarOpen && (
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">WasteRec</h1>
+                <p className="text-xs text-gray-500">Collector</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Tabs & Content */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[500px]">
-            <div className="border-b border-gray-200 bg-gray-50 px-6 py-4 flex items-center justify-between">
-               <div className="flex space-x-6">
-                  <button 
-                    onClick={() => setActiveTab("tasks")}
-                    className={`pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "tasks" ? "border-emerald-500 text-emerald-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-                  >
-                    Current Tasks
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab("history")}
-                    className={`pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "history" ? "border-emerald-500 text-emerald-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-                  >
-                    History
-                  </button>
-               </div>
-               
-               {activeTab === "tasks" && (
-                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Search tasks..." 
-                      className="pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                 </div>
-               )}
-            </div>
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                  ${
+                    isActive
+                      ? "bg-green-50 text-[#0AA468]"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }
+                `}
+                title={!sidebarOpen ? tab.label : ""}
+              >
+                <Icon size={20} className={isActive ? "text-[#0AA468]" : "text-gray-400"} />
+                {sidebarOpen && <span>{tab.label}</span>}
+              </button>
+            );
+          })}
+        </nav>
 
-            <div className="p-6">
-               {activeTab === "tasks" ? (
-                  loading ? (
-                    <div className="py-12 text-center text-gray-500">Loading tasks...</div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {tasks.map(task => (
-                        <TaskCard key={task.id} task={task} onUpdateStatus={handleUpdateStatus} />
-                      ))}
-                      {tasks.length === 0 && (
-                          <div className="col-span-full py-12 text-center text-gray-500">
-                             No tasks assigned at the moment.
-                          </div>
-                      )}
-                    </div>
-                  )
-               ) : (
-                  <HistoryList />
-               )}
+        {/* User Profile */}
+        <div className="p-4 border-t border-gray-200 space-y-3">
+          {sidebarOpen && (
+            <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0AA468] to-[#067D54] flex items-center justify-center text-white font-bold text-sm">
+                {user?.fullName?.charAt(0).toUpperCase() || "C"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user?.fullName || "Collector"}
+                </p>
+                <p className="text-xs text-gray-500 truncate">Người Thu Gom</p>
+              </div>
             </div>
+          )}
+
+          <button
+            onClick={handleLogout}
+            className={`
+              w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+              text-red-600 hover:bg-red-50
+            `}
+            title={!sidebarOpen ? "Đăng Xuất" : ""}
+          >
+            <LogOut size={20} />
+            {sidebarOpen && <span>Đăng Xuất</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto flex flex-col">
+        {/* Mobile Header */}
+        <div className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-10">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+          >
+            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+          <button
+            onClick={handleLogout}
+            className="p-2 hover:bg-red-50 rounded-lg text-red-600"
+          >
+            <LogOut size={20} />
+          </button>
         </div>
 
-        {/* Action Modal */}
-        <Modal 
+        {/* Content */}
+        <div className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full">
+          {renderContent()}
+        </div>
+      </main>
+
+      {/* Task Detail Modal */}
+      {selectedTask && (
+        <TaskDetailModal
           isOpen={isModalOpen}
-          onClose={closeModal}
-          title={selectedTask ? `Update Task #${selectedTask.id.substring(0,8)}` : "Task Update"}
-        >
-           {renderModalContent()}
-        </Modal>
+          task={selectedTask}
+          onClose={handleCloseModal}
+          onUpdate={handleUpdateTask}
+        />
+      )}
+    </div>
+  );
+};
+
+// Settings Page Component
+const SettingsPage: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Cài Đặt</h1>
+        <p className="text-gray-600 mt-2">Quản lý thông tin cá nhân và tùy chọn</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Personal Info */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <h2 className="font-bold text-lg text-gray-900">Thông Tin Cá Nhân</h2>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Tên Đầy Đủ
+            </label>
+            <input
+              type="text"
+              defaultValue="Trần Văn D"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Số Điện Thoại
+            </label>
+            <input
+              type="tel"
+              defaultValue="0901234567"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Địa Chỉ
+            </label>
+            <input
+              type="text"
+              defaultValue="Hà Nội"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
+            />
+          </div>
+
+          <button className="w-full py-2.5 bg-[#0AA468] hover:bg-[#088F5A] text-white font-bold rounded-lg transition-all">
+            Lưu Thay Đổi
+          </button>
+        </div>
+
+        {/* Notifications */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <h2 className="font-bold text-lg text-gray-900">Thông Báo</h2>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">Task Mới</p>
+              <p className="text-sm text-gray-600">Nhận thông báo task mới</p>
+            </div>
+            <input type="checkbox" defaultChecked className="w-5 h-5" />
+          </div>
+
+          <hr />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">Message</p>
+              <p className="text-sm text-gray-600">Tin nhắn từ quản lý</p>
+            </div>
+            <input type="checkbox" defaultChecked className="w-5 h-5" />
+          </div>
+
+          <hr />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">Email</p>
+              <p className="text-sm text-gray-600">Email thống kê hàng tuần</p>
+            </div>
+            <input type="checkbox" className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
