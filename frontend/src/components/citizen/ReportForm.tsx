@@ -1,307 +1,551 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { Camera, MapPin, Upload, Trash2, AlertCircle, X } from "lucide-react";
-import { categoryApi, WasteCategory } from "../../lib/api/categoryApi";
-import { reportApi } from "../../lib/api/reportApi";
+import React, { useState } from "react";
+import {
+  Camera,
+  MapPin,
+  Trash2,
+  FileText,
+  AlertCircle,
+  Check,
+  Plus,
+  X,
+  Navigation,
+} from "lucide-react";
 
 interface ReportFormProps {
   onSubmit: () => void;
+  userLocation?: { latitude: number; longitude: number } | null;
 }
 
-export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGettingGPS, setIsGettingGPS] = useState(false);
-  const [previews, setPreviews] = useState<string[]>([]);
-  
-  const [categories, setCategories] = useState<WasteCategory[]>([]);
-  const [isLoadingCat, setIsLoadingCat] = useState(true);
-  
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | "">("");
-  const [address, setAddress] = useState("");
-  const [latitude, setLatitude] = useState<number | "">("");
-  const [longitude, setLongitude] = useState<number | "">("");
-  const [description, setDescription] = useState("");
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [error, setError] = useState<string | null>(null);
+export const ReportForm: React.FC<ReportFormProps> = ({
+  onSubmit,
+  userLocation,
+}) => {
+  const [step, setStep] = useState(1);
+  const [images, setImages] = useState<string[]>([]);
+  const [formData, setFormData] = useState({
+    location: userLocation?.latitude?.toString() || "",
+    description: "",
+    wasteType: [] as string[],
+    address: "",
+    longitude: userLocation?.longitude?.toString() || "",
+  });
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
-  useEffect(() => {
-    categoryApi.getAllCategories()
-      .then(res => {
-        setCategories(res.data);
-        setIsLoadingCat(false);
-      })
-      .catch(err => {
-        console.error("Failed to load categories", err);
-        setIsLoadingCat(false);
-      });
-  }, []);
+  const wasteTypes = [
+    {
+      id: "organic",
+      label: "Hữu cơ",
+      color: "bg-green-100 text-green-700 border-green-300",
+    },
+    {
+      id: "recyclable",
+      label: "Tái chế",
+      color: "bg-blue-100 text-blue-700 border-blue-300",
+    },
+    {
+      id: "hazardous",
+      label: "Nguy hiểm",
+      color: "bg-red-100 text-red-700 border-red-300",
+    },
+    { id: "other", label: "Khác", color: "bg-gray-100 text-gray-700 border-gray-300" },
+  ];
 
-  const reverseGeocode = async (lat: number, lon: number) => {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1&accept-language=vi-VN`);
-      const data = await res.json();
-      if (data && data.display_name) {
-        return data.display_name;
-      }
-    } catch (error) {
-      console.error("Reverse geocoding failed", error);
-    }
-    return `Vị trí GPS: ${lat}, ${lon}`;
+  const toggleWasteType = (typeId: string) => {
+    setFormData({
+      ...formData,
+      wasteType: formData.wasteType.includes(typeId)
+        ? formData.wasteType.filter((t) => t !== typeId)
+        : [...formData.wasteType, typeId],
+    });
   };
 
-  const handleGPSLocation = () => {
-    if ("geolocation" in navigator) {
-      setIsGettingGPS(true);
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        setLatitude(pos.coords.latitude);
-        setLongitude(pos.coords.longitude);
-        const addressName = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-        setAddress(addressName);
-        setIsGettingGPS(false);
-      }, (err) => {
-        alert("Không thể lấy GPS. Vui lòng kiểm tra quyền truy cập.");
-        setIsGettingGPS(false);
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setImages((prev) => [...prev, event.target?.result as string]);
+        };
+        reader.readAsDataURL(file);
       });
-    } else {
-      alert("Trình duyệt không hỗ trợ GPS.");
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files);
-      setImageFiles(prev => [...prev, ...filesArray]);
-      
-      const newPreviews = filesArray.map(file => URL.createObjectURL(file));
-      setPreviews(prev => [...prev, ...newPreviews]);
     }
   };
 
   const removeImage = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
-    setPreviews(prev => prev.filter((_, i) => i !== index));
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const geocodeAddress = async (addr: string) => {
+  // 🔴 REVERSE GEOCODING - Convert GPS to Address
+  const reverseGeocode = async (latitude: number, longitude: number) => {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`);
-      const data = await res.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-      }
-    } catch (error) {
-      console.error("Geocoding failed", error);
-    }
-    return null;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!selectedCategoryId || imageFiles.length === 0 || !address) {
-      setError("Vui lòng điền đầy đủ thông tin địa chỉ, ảnh và loại rác.");
-      return;
-    }
-
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) {
-      setError("Bạn chưa đăng nhập! Vui lòng nhấn nút 'ĐĂNG NHẬP' ở góc trên bên phải bằng tài khoản công dân (Citizen) để tạo báo cáo rác.");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      let finalLat = latitude;
-      let finalLon = longitude;
-
-      // If user provided address but didn't use GPS, try to geocode it
-      if (finalLat === "" || finalLon === "") {
-        const coords = await geocodeAddress(address);
-        if (coords) {
-          finalLat = coords.lat;
-          finalLon = coords.lon;
-        } else {
-          // Default fallback coordinates (Hanoi, Vietnam)
-          finalLat = 21.0285;
-          finalLon = 105.8048;
+      // Using OpenStreetMap Nominatim API (free, no API key needed)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            "Accept-Language": "vi", // Vietnamese language
+          },
         }
-      }
+      );
 
-      const formData = new FormData();
-      formData.append("WasteCategoryId", selectedCategoryId.toString());
-      formData.append("Latitude", finalLat.toString());
-      formData.append("Longitude", finalLon.toString());
-      formData.append("Description", description);
-      formData.append("Address", address);
-      formData.append("AiSuggestion", "");
-      
-      // Append multiple images under the same key
-      imageFiles.forEach(file => {
-        formData.append("Images", file);
-      });
+      if (!response.ok) throw new Error("Geocoding failed");
 
-      await reportApi.createWasteReport(formData);
-      
-      setIsSubmitting(false);
-      onSubmit();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Đã xảy ra lỗi khi tạo báo cáo.");
-      setIsSubmitting(false);
+      const data = await response.json();
+      const address = data.address?.road
+        ? `${data.address.road}${data.address.house_number ? ", " + data.address.house_number : ""}, ${data.address.city || data.address.town || ""}`
+        : data.display_name;
+
+      return address;
+    } catch (error) {
+      console.error("Reverse geocoding error:", error);
+      return null;
     }
+  };
+
+  // 🔴 REQUEST GPS PERMISSION & GET CURRENT LOCATION
+  const handleRequestLocation = async () => {
+    setLocationLoading(true);
+    setLocationError(null);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          // Update GPS coordinates
+          setFormData((prev) => ({
+            ...prev,
+            location: latitude.toFixed(6),
+            longitude: longitude.toFixed(6),
+          }));
+
+          // Get address from GPS coordinates
+          const address = await reverseGeocode(latitude, longitude);
+          if (address) {
+            setFormData((prev) => ({
+              ...prev,
+              address: address,
+            }));
+          }
+
+          setLocationLoading(false);
+        },
+        (error) => {
+          setLocationError(
+            "Không thể lấy vị trí. Vui lòng kiểm tra quyền truy cập."
+          );
+          console.error("Geolocation error:", error);
+          setLocationLoading(false);
+        }
+      );
+    } else {
+      setLocationError("Trình duyệt không hỗ trợ Geolocation");
+      setLocationLoading(false);
+    }
+  };
+
+  // 🟢 USE CURRENT LOCATION FROM PROPS
+  const handleUseCurrentLocation = async () => {
+    if (userLocation) {
+      const { latitude, longitude } = userLocation;
+
+      // Update GPS coordinates
+      setFormData((prev) => ({
+        ...prev,
+        location: latitude.toFixed(6),
+        longitude: longitude.toFixed(6),
+      }));
+
+      // Get address from GPS coordinates
+      setLocationLoading(true);
+      const address = await reverseGeocode(latitude, longitude);
+      if (address) {
+        setFormData((prev) => ({
+          ...prev,
+          address: address,
+        }));
+      }
+      setLocationLoading(false);
+      setLocationError(null);
+    } else {
+      setLocationError("Vị trí hiện tại không khả dụng");
+    }
+  };
+
+  const canProceedStep1 = images.length > 0;
+  const canProceedStep2 =
+    formData.location &&
+    formData.address &&
+    formData.wasteType.length > 0;
+  const canProceedStep3 = formData.description.length > 10;
+
+  const handleSubmit = () => {
+    console.log("Report submitted:", formData);
+    onSubmit();
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Tạo Báo Cáo Thu Gom</h2>
-        <p className="text-gray-500 mt-1">Cung cấp thông tin và vài hình ảnh góc độ khác nhau để người thu gom dễ nhận biết rác tái chế.</p>
+    <div className="space-y-6">
+      {/* Progress Steps */}
+      <div className="flex items-center gap-4">
+        {[1, 2, 3, 4].map((stepNum, idx) => (
+          <React.Fragment key={stepNum}>
+            <button
+              onClick={() => setStep(stepNum)}
+              className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all ${
+                step >= stepNum
+                  ? "bg-[#0AA468] text-white shadow-lg"
+                  : "bg-gray-200 text-gray-600"
+              }`}
+            >
+              {step > stepNum ? <Check size={24} /> : stepNum}
+            </button>
+            {idx < 3 && (
+              <div
+                className={`flex-1 h-1 rounded-full transition-all ${
+                  step > stepNum ? "bg-[#0AA468]" : "bg-gray-200"
+                }`}
+              />
+            )}
+          </React.Fragment>
+        ))}
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2">
-          <AlertCircle size={20} />
-          {error}
-        </div>
-      )}
+      {/* Step Labels */}
+      <div className="grid grid-cols-4 gap-2 text-center text-sm">
+        <div className="font-semibold text-gray-900">Hình Ảnh</div>
+        <div className="font-semibold text-gray-900">Vị Trí</div>
+        <div className="font-semibold text-gray-900">Phân Loại</div>
+        <div className="font-semibold text-gray-900">Chi Tiết</div>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Upload Image Section */}
-        <div className="space-y-4">
-          <div className="border-2 border-dashed border-emerald-200 rounded-xl p-8 text-center bg-emerald-50/30 hover:bg-emerald-50/80 transition-colors relative group">
-            <input 
-              type="file" 
-              accept="image/*" 
-              multiple
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-              onChange={handleFileChange}
-              required={imageFiles.length === 0}
-            />
-            <div className="flex flex-col items-center pointer-events-none">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Camera size={32} />
-              </div>
-              <h3 className="text-lg font-semibold text-emerald-800">Chụp hoặc Tải Lên Nhiều Ảnh Cùng Lúc</h3>
-              <p className="text-sm text-emerald-600/70 mt-1">Hỗ trợ JPG, PNG • Tối đa 5MB mỗi ảnh</p>
-            </div>
-          </div>
+      {/* Step 1: Images */}
+      {step === 1 && (
+        <div className="space-y-4 animate-in fade-in">
+          <div>
+            <label className="block text-lg font-bold text-gray-900 mb-4">
+              📸 Chụp Hình Rác Thải
+            </label>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {/* Upload Area */}
+              <label className="col-span-3 sm:col-span-1 border-2 border-dashed border-[#0AA468] rounded-xl p-6 hover:bg-green-50 cursor-pointer transition-all text-center">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <Camera size={32} className="text-[#0AA468] mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-900">Thêm Ảnh</p>
+                <p className="text-xs text-gray-600 mt-1">JPG, PNG</p>
+              </label>
 
-          {/* Previews Grid */}
-          {previews.length > 0 && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 mt-4">
-              {previews.map((preview, index) => (
-                <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-emerald-100 shadow-sm group">
-                  <img src={preview} alt={`Preview ${index}`} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button 
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors transform hover:scale-110"
-                      title="Xóa ảnh"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
+              {/* Image Previews */}
+              {images.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative rounded-xl overflow-hidden border-2 border-gray-200 aspect-square group"
+                >
+                  <img
+                    src={img}
+                    alt={`preview-${idx}`}
+                    className="w-full h-full object-cover group-hover:brightness-75 transition-all"
+                  />
+                  <button
+                    onClick={() => removeImage(idx)}
+                    className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
               ))}
             </div>
-          )}
-        </div>
+            {images.length > 0 && (
+              <p className="text-sm text-green-600 font-medium">
+                ✓ Đã chọn {images.length} ảnh
+              </p>
+            )}
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Location & GPS */}
-          <div className="col-span-1 md:col-span-2 space-y-2">
-            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <MapPin size={16} className="text-emerald-500" />
-              Vị Trí Nhận Rác
+          <button
+            onClick={() => setStep(2)}
+            disabled={!canProceedStep1}
+            className="w-full py-3 bg-[#0AA468] hover:bg-[#088F5A] disabled:bg-gray-400 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+          >
+            Tiếp Tục
+            <Plus size={20} />
+          </button>
+        </div>
+      )}
+
+      {/* Step 2: Location */}
+      {step === 2 && (
+        <div className="space-y-4 animate-in fade-in">
+          <div>
+            <label className="block text-lg font-bold text-gray-900 mb-4">
+              📍 Vị Trí Rác Thải
             </label>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input 
-                type="text" 
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Ví dụ: 123 Đường Ngọc Khánh, Ba Đình..." 
-                className="flex-1 rounded-lg border-gray-200 border p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                required
-              />
-              <button 
-                type="button" 
-                onClick={handleGPSLocation}
-                disabled={isGettingGPS}
-                className="bg-emerald-100 text-emerald-700 px-4 py-3 rounded-lg font-medium hover:bg-emerald-200 transition-colors flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-70"
+
+            {/* Error Message */}
+            {locationError && (
+              <div className="mb-4 flex items-start gap-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+                <AlertCircle
+                  size={18}
+                  className="text-red-600 mt-0.5 shrink-0"
+                />
+                <span className="text-sm text-red-600">{locationError}</span>
+              </div>
+            )}
+
+            {/* Location Buttons */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {/* Share Location Button */}
+              <button
+                onClick={handleRequestLocation}
+                disabled={locationLoading}
+                className="py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
               >
-                {isGettingGPS ? (
-                  <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-600 rounded-full animate-spin" />
+                {locationLoading ? (
+                  <>
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Đang lấy...
+                  </>
                 ) : (
-                  <MapPin size={18} />
+                  <>
+                    <Navigation size={18} />
+                    Chia Sẻ Vị Trí
+                  </>
                 )}
-                {isGettingGPS ? "Đang định vị..." : "GPS Ngay"}
               </button>
+
+              {/* Use Current Location Button */}
+              <button
+                onClick={handleUseCurrentLocation}
+                disabled={!userLocation || locationLoading}
+                className="py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+              >
+                {locationLoading ? (
+                  <>
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  </>
+                ) : (
+                  <>
+                    <MapPin size={18} />
+                    Dùng Vị Trí Hiện Tại
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Map or Location Input */}
+            <div className="bg-gray-100 rounded-xl h-48 flex items-center justify-center border-2 border-gray-300 mb-4">
+              <div className="text-center">
+                <MapPin size={40} className="text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-600">Bản đồ</p>
+                {formData.location && formData.longitude && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    📍 {formData.location}, {formData.longitude}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Coordinates */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Kinh độ (Latitude)
+                </label>
+                <input
+                  type="text"
+                  placeholder="21.0285"
+                  value={formData.location}
+                  onChange={(e) =>
+                    setFormData({ ...formData, location: e.target.value })
+                  }
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Vĩ độ (Longitude)
+                </label>
+                <input
+                  type="text"
+                  placeholder="105.8542"
+                  value={formData.longitude}
+                  onChange={(e) =>
+                    setFormData({ ...formData, longitude: e.target.value })
+                  }
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
+                />
+              </div>
+            </div>
+
+            {/* Address - NOW AUTO-FILLED */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                📮 Địa Chỉ Chi Tiết{" "}
+                {formData.address && (
+                  <span className="text-green-600 font-bold">✓ Tự động</span>
+                )}
+              </label>
+              <input
+                type="text"
+                placeholder="123 Cầu Giấy, Hà Nội"
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
+              />
+              {!formData.address && (
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Bấm "Chia Sẻ Vị Trí" để tự động lấy địa chỉ
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Waste Type selection */}
-          <div className="col-span-1 md:col-span-2 space-y-3">
-            <label className="text-sm font-semibold text-gray-700">Phân Loại Rác Tại Nguồn</label>
-            {isLoadingCat ? (
-              <p className="text-sm text-gray-500">Đang tải danh mục...</p>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {categories.map((category) => (
-                  <label key={category.id} className="relative cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="wasteType" 
-                      value={category.id} 
-                      onChange={() => setSelectedCategoryId(category.id)}
-                      checked={selectedCategoryId === category.id}
-                      className="peer sr-only" 
-                      required 
-                    />
-                    <div className="p-4 h-full rounded-xl border-2 border-gray-100 text-center hover:border-emerald-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50/50 transition-all bg-gray-50">
-                      <Trash2 className="mx-auto mb-2 text-emerald-500" size={24} />
-                      <span className="text-sm font-medium text-gray-700">{category.name}</span>
-                    </div>
-                  </label>
-                ))}
-              </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep(1)}
+              className="flex-1 py-3 border-2 border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-100 transition-all"
+            >
+              ← Quay Lại
+            </button>
+            <button
+              onClick={() => setStep(3)}
+              disabled={!canProceedStep2}
+              className="flex-1 py-3 bg-[#0AA468] hover:bg-[#088F5A] disabled:bg-gray-400 text-white font-bold rounded-lg transition-all"
+            >
+              Tiếp Tục →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Waste Type */}
+      {step === 3 && (
+        <div className="space-y-4 animate-in fade-in">
+          <div>
+            <label className="block text-lg font-bold text-gray-900 mb-4">
+              🗑️ Phân Loại Rác
+            </label>
+            <p className="text-gray-600 mb-4">
+              Chọn loại rác (có thể chọn nhiều)
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {wasteTypes.map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => toggleWasteType(type.id)}
+                  className={`p-4 rounded-xl border-2 transition-all font-semibold ${
+                    formData.wasteType.includes(type.id)
+                      ? type.color + " border-current"
+                      : "bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
+            </div>
+
+            {formData.wasteType.length > 0 && (
+              <p className="text-sm text-green-600 font-medium">
+                ✓ Đã chọn {formData.wasteType.length} loại rác
+              </p>
             )}
           </div>
 
-          <div className="space-y-2 col-span-1 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700">Mô Tả Thêm (Ghi chú cho người thu gom)</label>
-            <textarea 
-              rows={3} 
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-lg border-gray-200 border p-3 focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-              placeholder="Ví dụ: Gọi tôi 10 phút trước khi đến..."
-            ></textarea>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep(2)}
+              className="flex-1 py-3 border-2 border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-100 transition-all"
+            >
+              ← Quay Lại
+            </button>
+            <button
+              onClick={() => setStep(4)}
+              disabled={!canProceedStep2}
+              className="flex-1 py-3 bg-[#0AA468] hover:bg-[#088F5A] disabled:bg-gray-400 text-white font-bold rounded-lg transition-all"
+            >
+              Tiếp Tục →
+            </button>
           </div>
         </div>
+      )}
 
-        <div className="pt-4 border-t border-gray-100">
-          <button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-8 rounded-lg shadow-md shadow-emerald-500/30 transition-all disabled:opacity-70 flex items-center justify-center gap-2 text-lg"
-          >
-            {isSubmitting ? (
-               <span className="flex items-center gap-2">
-                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                 Đang Gửi...
-               </span>
-            ) : (
-              <>
-                <Upload size={20} />
-                Tạo Báo Cáo Có Đính Kèm ({imageFiles.length}) Ảnh
-              </>
-            )}
-          </button>
+      {/* Step 4: Description */}
+      {step === 4 && (
+        <div className="space-y-4 animate-in fade-in">
+          <div>
+            <label className="block text-lg font-bold text-gray-900 mb-4">
+              💬 Mô Tả Chi Tiết
+            </label>
+
+            <textarea
+              placeholder="Mô tả tình trạng rác thải, vị trí, khoảng cách, số lượng... (tối thiểu 10 ký tự)"
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              rows={6}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468] resize-none"
+            />
+            <p className="text-xs text-gray-600 mt-2">
+              {formData.description.length}/100 ký tự (tối thiểu 10)
+            </p>
+          </div>
+
+          {/* Summary */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="font-semibold text-gray-900 mb-3">📋 Tóm Tắt Báo Cáo</p>
+            <div className="space-y-2 text-sm text-gray-700">
+              <p>
+                📸 <strong>{images.length} ảnh</strong>
+              </p>
+              <p>
+                📮 <strong>{formData.address || "Chưa chọn"}</strong>
+              </p>
+              <p>
+                🗑️{" "}
+                <strong>
+                  {formData.wasteType.join(", ") || "Chưa chọn"}
+                </strong>
+              </p>
+              <p>
+                🧭{" "}
+                <strong>
+                  GPS: {formData.location || "?"}, {formData.longitude || "?"}
+                </strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep(3)}
+              className="flex-1 py-3 border-2 border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-100 transition-all"
+            >
+              ← Quay Lại
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!canProceedStep3}
+              className="flex-1 py-3 bg-[#0AA468] hover:bg-[#088F5A] disabled:bg-gray-400 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+            >
+              <Check size={20} />
+              Gửi Báo Cáo
+            </button>
+          </div>
         </div>
-      </form>
+      )}
     </div>
   );
 };

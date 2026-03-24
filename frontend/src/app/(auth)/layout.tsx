@@ -79,13 +79,13 @@ export default function AuthLayout({
         </div>
 
         {/* Right Side: Auth Form Container */}
-        <div className="w-full lg:w-4/12 flex justify-center items-center relative">
+        <div className="w-full lg:w-5/12 flex justify-center items-center relative">
           {/* Side text "WASTE RECYCLING PLATFORM" */}
           <div className="absolute -right-12 top-1/2 transform -translate-y-1/2 rotate-90 origin-center text-[10px] tracking-[0.5em] text-white font-bold opacity-70 hidden xl:block pointer-events-none whitespace-nowrap">
             WASTE RECYCLING PLATFORM
           </div>
 
-          <div className="w-full max-w-[380px]">
+          <div className="w-full max-w-lg px-4 sm:px-6 lg:px-8">
              {children}
           </div>
         </div>

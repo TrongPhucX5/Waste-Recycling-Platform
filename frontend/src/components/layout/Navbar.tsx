@@ -1,8 +1,9 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { Menu, X, LogOut, User, LogIn, UserPlus } from "lucide-react"; // Đã bỏ Home vì không dùng
 
 interface NavMenuItem {
   label: string;
@@ -17,55 +18,103 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   menuItems = [
     { label: "GIỚI THIỆU", href: "/" },
-    { label: "SẢN PHẨM", href: "/products" },
-    { label: "TIN TỨC", href: "/news" },
-    { label: "LIÊN HỆ", href: "/contact" },
+    { label: "SẢN PHẨM", href: "#products" },
+    { label: "TIN TỨC", href: "#news" },
+    { label: "LIÊN HỆ", href: "#contact" },
   ],
   transparent = false,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const { isAuthenticated, user, logout } = useAuth();
+
+  // --- THÊM LOGIC KIỂM TRA ROUTE Ở ĐÂY ---
+  // Danh sách các trang cho phép hiển thị Navbar này
+  const publicPaths = ["/", "/login", "/register", "/reset-password"];
+  
+  // Kiểm tra xem pathname hiện tại có nằm trong danh sách không
+  // Dùng startsWith cho reset-password phòng trường hợp bạn có route kiểu /reset-password/[token]
+  const shouldShowNavbar = publicPaths.includes(pathname) || pathname?.startsWith("/reset-password");
+
+  // Nếu không thuộc các trang trên (VD: đang ở /dashboard), thì ẩn hoàn toàn Navbar này
+  if (!shouldShowNavbar) {
+    return null; 
+  }
+  // ---------------------------------------
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname?.startsWith(href);
   };
 
+  const handleLogout = () => {
+    logout();
+    setIsMobileMenuOpen(false);
+    router.push("/");
+  };
+
   return (
-    <nav className={transparent ? "absolute top-0 w-full z-10" : "bg-white sticky top-0 z-50 border-b border-gray-100"}>
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+    <nav
+      className={`z-50 ${
+        transparent
+          ? "absolute top-0 w-full"
+          : "bg-white sticky top-0 border-b border-gray-100"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <svg
-              width="40"
-              height="40"
-              viewBox="0 0 40 40"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+          <Link
+            href="/"
+            className="flex items-center gap-3 group flex-shrink-0"
+          >
+            <div
+              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
+                transparent
+                  ? "bg-white/20 group-hover:bg-white/30"
+                  : "bg-[#0AA468] group-hover:bg-[#088F5A]"
+              }`}
             >
-               {/* Cactus Logo */}
-               <path 
-                d="M20 30V10M14 16V20C14 22 15 23 17 23H20M26 16V20C26 22 25 23 23 23H20M15 34H25" 
-                stroke={transparent ? "#fff" : "#00C853"}
-                strokeWidth="4" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-               />
-            </svg>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 40 40"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M20 30V10M14 16V20C14 22 15 23 17 23H20M26 16V20C26 22 25 23 23 23H20M15 34H25"
+                  stroke={transparent ? "#fff" : "white"}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <span
+              className={`font-bold text-lg hidden sm:inline transition-colors ${
+                transparent
+                  ? "text-white group-hover:text-[#0AA468]"
+                  : "text-gray-900 group-hover:text-[#0AA468]"
+              }`}
+            >
+              WasteRec
+            </span>
           </Link>
 
-          {/* Desktop Nav Links - Centered */}
-          <div className="hidden md:flex items-center gap-10">
+          {/* Desktop Nav Links */}
+          <div className="hidden md:flex items-center gap-8">
             {menuItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`text-sm font-bold tracking-wider transition-colors ${
+                className={`text-sm font-semibold tracking-wide transition-colors ${
                   isActive(item.href)
-                    ? (transparent ? "text-[#00C853]" : "text-[#00C853]")
-                    : (transparent ? "text-white/90 hover:text-[#00C853]" : "text-gray-400 hover:text-[#00C853]")
+                    ? "text-[#0AA468]"
+                    : transparent
+                    ? "text-white/80 hover:text-[#0AA468]"
+                    : "text-gray-600 hover:text-[#0AA468]"
                 }`}
               >
                 {item.label}
@@ -73,92 +122,140 @@ export const Navbar: React.FC<NavbarProps> = ({
             ))}
           </div>
 
-          {/* Auth Buttons */}
-          <div className="hidden md:flex items-center gap-8">
+          {/* Auth Buttons - Desktop */}
+          <div className="hidden md:flex items-center gap-4">
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-4">
-                <span className={`text-sm font-bold tracking-wider ${transparent ? "text-white" : "text-gray-700"}`}>
-                  Xin chào, {user.fullName}
-                </span>
-                <button
-                  onClick={logout}
-                  className={`text-sm font-bold uppercase tracking-wider transition-colors ${
-                    transparent ? "text-white/90 hover:text-red-400" : "text-gray-400 hover:text-red-500"
+              <div className="flex items-center gap-4 pl-4 border-l border-gray-200">
+                <div
+                  className={`flex items-center gap-2 ${
+                    transparent ? "text-white" : "text-gray-700"
                   }`}
                 >
-                  ĐĂNG XUẤT
+                  <div className="w-8 h-8 bg-[#0AA468] rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    {user.fullName?.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium hidden lg:inline">
+                    {user.fullName}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className={`p-2 rounded-lg transition-colors ${
+                    transparent
+                      ? "text-white/80 hover:bg-white/10 hover:text-white"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-red-600"
+                  }`}
+                  title="Đăng xuất"
+                >
+                  <LogOut size={18} />
                 </button>
               </div>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className={`text-sm font-bold uppercase tracking-wider transition-colors ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
                     pathname === "/login"
-                    ? "text-[#00C853]"
-                    : (transparent ? "text-white/90 hover:text-[#00C853]" : "text-gray-400 hover:text-[#00C853]")
+                      ? "text-[#0AA468]"
+                      : transparent
+                      ? "text-white/80 hover:text-white"
+                      : "text-gray-600 hover:text-[#0AA468]"
                   }`}
                 >
-                  ĐĂNG NHẬP
+                  <LogIn size={16} />
+                  <span>Đăng Nhập</span>
                 </Link>
                 <Link
                   href="/register"
-                  className={`text-sm font-bold uppercase tracking-wider transition-colors ${
+                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
                     pathname === "/register"
-                    ? "text-[#00C853]"
-                    : (transparent ? "text-white/90 hover:text-[#00C853]" : "text-gray-400 hover:text-[#00C853]")
+                      ? "bg-[#0AA468] text-white"
+                      : transparent
+                      ? "bg-white/20 text-white hover:bg-white/30"
+                      : "bg-[#0AA468] text-white hover:bg-[#088F5A]"
                   }`}
                 >
-                  ĐĂNG KÝ
+                  <span className="flex items-center gap-2">
+                    <UserPlus size={16} />
+                    <span>Đăng Ký</span>
+                  </span>
                 </Link>
               </>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className={`md:hidden p-2 rounded-md focus:outline-none ${transparent ? "text-white/90 hover:text-white" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"}`}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {isMobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
+          {/* Mobile Menu Toggle */}
+          <div className="md:hidden flex items-center">
+             <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={`p-2 rounded-lg transition-colors ${
+                transparent
+                  ? "text-white hover:bg-white/10"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden pb-4 border-t border-gray-100 pt-3 bg-white rounded-b-lg shadow-xl">
+          <div className={`md:hidden py-4 border-t ${transparent ? "border-white/10" : "border-gray-100"}`}>
             {menuItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`block px-4 py-3 rounded-md font-bold tracking-wider text-sm ${
-                  isActive(item.href) ? "text-[#00C853] bg-emerald-50" : "text-gray-500 hover:bg-gray-50"
+                className={`block px-4 py-2 text-sm font-semibold transition-colors ${
+                  isActive(item.href)
+                    ? "text-[#0AA468]"
+                    : transparent
+                    ? "text-white/80 hover:text-[#0AA468]"
+                    : "text-gray-600 hover:text-[#0AA468]"
                 }`}
-                onClick={() => setIsMobileMenuOpen(false)}
               >
                 {item.label}
               </Link>
             ))}
-            <div className="border-t border-gray-100 mt-3 pt-3 flex gap-4 px-4">
-              <Link 
-                href="/login" 
-                className={`text-sm font-bold tracking-wider uppercase ${pathname === "/login" ? "text-[#00C853]" : "text-gray-500"}`}
+            {isAuthenticated && user ? (
+              <button
+                onClick={handleLogout}
+                className={`w-full text-left px-4 py-2 text-sm font-semibold transition-colors flex items-center gap-2 ${
+                  transparent
+                    ? "text-white/80 hover:text-white"
+                    : "text-gray-600 hover:text-red-600"
+                }`}
               >
-                ĐĂNG NHẬP
-              </Link>
-              <Link 
-                href="/register" 
-                className={`text-sm font-bold tracking-wider uppercase ${pathname === "/register" ? "text-[#00C853]" : "text-gray-500"}`}
-              >
-                ĐĂNG KÝ
-              </Link>
-            </div>
+                <LogOut size={16} />
+                <span>Đăng Xuất</span>
+              </button>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className={`block px-4 py-2 mt-2 text-sm font-semibold transition-colors ${
+                    transparent
+                      ? "text-white/80 hover:text-white"
+                      : "text-gray-600 hover:text-[#0AA468]"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <LogIn size={16} />
+                    <span>Đăng Nhập</span>
+                  </span>
+                </Link>
+                <Link
+                  href="/register"
+                  className={`block px-4 py-2 mt-2 text-sm font-semibold transition-colors text-[#0AA468]`}
+                >
+                  <span className="flex items-center gap-2">
+                    <UserPlus size={16} />
+                    <span>Đăng Ký</span>
+                  </span>
+                </Link>
+              </>
+            )}
           </div>
         )}
       </div>

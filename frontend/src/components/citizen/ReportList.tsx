@@ -1,163 +1,238 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { Clock, CheckCircle2, Truck, AlertCircle, MessageSquare, MapPin } from "lucide-react";
-import { reportApi } from "../../lib/api/reportApi";
-import { ReportDetailModal } from "./ReportDetailModal";
-
-type ReportStatus = "Pending" | "Accepted" | "Assigned" | "Collected";
-
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  switch (status) {
-    case "Pending":
-      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><Clock size={14} /> Chờ Duyệt</span>;
-    case "Accepted":
-      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><CheckCircle2 size={14} /> Đã Nhận</span>;
-    case "Assigned":
-      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800"><Truck size={14} /> Đang Đến Trạm</span>;
-    case "Collected":
-      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800"><CheckCircle2 size={14} /> Hoàn Thành</span>;
-    default:
-      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">{status}</span>;
-  }
-};
+import React, { useState } from "react";
+import {
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  MapPin,
+  Trash2,
+  Star,
+  Filter,
+  Search,
+} from "lucide-react";
 
 export const ReportList: React.FC = () => {
-  const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null);
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-  const [reports, setReports] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    loadReports();
-  }, []);
+  // Mock data
+  const reports = [
+    {
+      id: 123,
+      address: "123 Cầu Giấy, Hà Nội",
+      wasteType: "Hữu cơ",
+      status: "completed",
+      points: 60,
+      rating: 5,
+      date: "23/03/2026 14:20",
+      image: "🖼️",
+      collectorName: "Nguyễn Văn B",
+      description: "Rác thải quanh bụi cây, lượng khoảng 50kg",
+    },
+    {
+      id: 124,
+      address: "456 Trần Duy Hưng, Hà Nội",
+      wasteType: "Tái chế",
+      status: "in_progress",
+      points: 30,
+      rating: null,
+      date: "23/03/2026 11:00",
+      image: "🖼️",
+      collectorName: "Trần Thị C",
+      description: "Túi nilon và giấy cardboard",
+    },
+    {
+      id: 125,
+      address: "789 Hàng Bài, Hà Nội",
+      wasteType: "Hữu cơ",
+      status: "pending",
+      points: null,
+      rating: null,
+      date: "23/03/2026 10:30",
+      image: "🖼️",
+      collectorName: null,
+      description: "Rác thải quanh thùng rác công cộng",
+    },
+  ];
 
-  const loadReports = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await reportApi.getMyReports();
-      setReports(res.reports);
-    } catch (err: any) {
-      console.error(err);
-      setError("Không thể tải dữ liệu lịch sử. Vui lòng thử lại.");
-    } finally {
-      setIsLoading(false);
-    }
+  const getStatusConfig = (status: string) => {
+    const configs: Record<string, any> = {
+      completed: {
+        label: "Hoàn thành",
+        color: "bg-green-100 text-green-700 border-green-300",
+        icon: CheckCircle,
+      },
+      in_progress: {
+        label: "Đang xử lý",
+        color: "bg-blue-100 text-blue-700 border-blue-300",
+        icon: Clock,
+      },
+      pending: {
+        label: "Chờ xử lý",
+        color: "bg-yellow-100 text-yellow-700 border-yellow-300",
+        icon: AlertCircle,
+      },
+    };
+    return configs[status];
   };
 
+  const wasteTypeColors: Record<string, string> = {
+    "Hữu cơ": "bg-green-100 text-green-700",
+    "Tái chế": "bg-blue-100 text-blue-700",
+    "Nguy hiểm": "bg-red-100 text-red-700",
+    "Khác": "bg-gray-100 text-gray-700",
+  };
+
+  const filteredReports = reports.filter((report) => {
+    const matchesStatus = filterStatus === "all" || report.status === filterStatus;
+    const matchesSearch =
+      report.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      report.description.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Nhật Ký Thu Gom</h2>
-          <p className="text-gray-500 mt-1">Theo dõi trạng thái các yêu cầu thu gom rác của bạn.</p>
+    <div className="space-y-4">
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* Search */}
+        <div className="flex-1 relative">
+          <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm báo cáo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
+          />
         </div>
-        <button 
-          onClick={loadReports}
-          className="text-sm font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors"
-        >
-          Làm mới
-        </button>
-      </div>
 
-      {isLoading ? (
-        <div className="text-center py-10 text-gray-500">
-          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          Đang tải lịch sử báo cáo...
-        </div>
-      ) : error ? (
-        <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center border border-red-100">
-          {error}
-        </div>
-      ) : reports.length === 0 ? (
-        <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-2xl border border-gray-100">
-          <Clock size={32} className="mx-auto text-gray-400 mb-3" />
-          <p>Bạn chưa có báo cáo thu gom nào.</p>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {reports.map((report) => (
-            <div 
-              key={report.id} 
-              onClick={() => setSelectedReportId(report.id)}
-              className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-emerald-200 group"
+        {/* Filter */}
+        <div className="flex gap-2 flex-wrap">
+          {[
+            { value: "all", label: "Tất cả" },
+            { value: "pending", label: "Chờ xử lý" },
+            { value: "in_progress", label: "Đang xử lý" },
+            { value: "completed", label: "Hoàn thành" },
+          ].map((filter) => (
+            <button
+              key={filter.value}
+              onClick={() => setFilterStatus(filter.value)}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                filterStatus === filter.value
+                  ? "bg-[#0AA468] text-white shadow-md"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
             >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center justify-between md:justify-start gap-4">
-                    <span className="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded group-hover:bg-emerald-50 group-hover:text-emerald-700 transition-colors">
-                      {report.id.substring(0, 8).toUpperCase()}
-                    </span>
-                    <StatusBadge status={report.status} />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="block text-gray-500 text-xs mb-1">Thời gian tạo</span>
-                      <span className="font-medium text-gray-800">{new Date(report.createdAt).toLocaleString("vi-VN")}</span>
-                    </div>
-                    <div>
-                      <span className="block text-gray-500 text-xs mb-1">Phân loại</span>
-                      <span className="font-medium text-gray-800">{report.categoryName}</span>
-                    </div>
-                    <div>
-                      <span className="block text-gray-500 text-xs mb-1">Đính kèm</span>
-                      <span className="font-medium text-gray-800">{report.imageCount} Ảnh</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-gray-600">
-                      <MapPin size={16} className="text-emerald-500 shrink-0" />
-                      <span className="truncate" title={report.address}>{report.address}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex shrink-0 gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-gray-100 md:border-l md:pl-6">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFeedbackOpen(feedbackOpen === report.id ? null : report.id);
-                    }}
-                    className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-red-600 transition-colors px-3 py-2 rounded-lg hover:bg-red-50 z-10"
-                    title="Gửi Khiếu Nại / Phản Hồi"
-                  >
-                    <AlertCircle size={18} /> Khiếu Nại
-                  </button>
-                </div>
-              </div>
-
-              {/* Feedback Form Expandable */}
-              {feedbackOpen === report.id && (
-                <div 
-                  className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/50 rounded-xl p-4 animate-in fade-in slide-in-from-top-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-3">
-                    <MessageSquare size={16} className="text-red-500" /> Gửi Phản Hồi
-                  </h4>
-                  <textarea 
-                    className="w-full text-sm rounded-lg border-gray-200 border p-3 focus:ring-2 focus:ring-red-500 outline-none resize-none bg-white"
-                    rows={2}
-                    placeholder="Ví dụ: Người thu gom đến trễ hơn cam kết, thái độ không tốt..."
-                  ></textarea>
-                  <div className="flex justify-end gap-2 mt-3">
-                    <button onClick={() => setFeedbackOpen(null)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Hủy</button>
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm shadow-red-500/30">Gửi Phản Hồi</button>
-                  </div>
-                </div>
-              )}
-            </div>
+              {filter.label}
+            </button>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* Render Modal if a report is selected */}
-      {selectedReportId && (
-        <ReportDetailModal 
-          reportId={selectedReportId} 
-          onClose={() => setSelectedReportId(null)} 
-        />
-      )}
+      {/* Reports List */}
+      <div className="space-y-3">
+        {filteredReports.length > 0 ? (
+          filteredReports.map((report) => {
+            const statusConfig = getStatusConfig(report.status);
+            const StatusIcon = statusConfig.icon;
+            return (
+              <div
+                key={report.id}
+                className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all"
+              >
+                <div className="p-4 sm:p-6">
+                  {/* Header */}
+                  <div className="flex items-start gap-4 mb-4">
+                    {/* Image */}
+                    <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-3xl shrink-0">
+                      {report.image}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                            wasteTypeColors[report.wasteType]
+                          }`}
+                        >
+                          {report.wasteType}
+                        </span>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 ${
+                            statusConfig.color
+                          }`}
+                        >
+                          <StatusIcon size={14} />
+                          {statusConfig.label}
+                        </span>
+                      </div>
+
+                      <p className="font-bold text-gray-900 flex items-center gap-1">
+                        <MapPin size={16} className="text-[#0AA468]" />
+                        {report.address}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {report.description}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">{report.date}</p>
+                    </div>
+
+                    {/* Points */}
+                    <div className="text-right shrink-0">
+                      {report.points && (
+                        <p className="text-2xl font-bold text-green-600">
+                          +{report.points}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-600">pts</p>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  {report.status === "completed" && (
+                    <div className="border-t border-gray-200 pt-4 mt-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">
+                            Thu gom bởi <span className="font-semibold">{report.collectorName}</span>
+                          </p>
+                        </div>
+                        {report.rating && (
+                          <div className="flex items-center gap-1">
+                            {[...Array(report.rating)].map((_, i) => (
+                              <Star
+                                key={i}
+                                size={16}
+                                className="fill-yellow-400 text-yellow-400"
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {report.status === "in_progress" && (
+                    <div className="border-t border-gray-200 pt-4 mt-4">
+                      <p className="text-sm text-gray-700">
+                        👤 Đang xử lý bởi <span className="font-semibold">{report.collectorName}</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="text-center py-12">
+            <Trash2 size={48} className="text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-600 font-semibold">Không có báo cáo nào</p>
+            <p className="text-gray-500 text-sm">Hãy tạo báo cáo đầu tiên của bạn</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
