@@ -1,22 +1,19 @@
 "use client";
-import React, { useState } from "react";
-import { LayoutDashboard, ClipboardList, Factory, Trophy } from "lucide-react";
+import { useState, useEffect } from "react";
+import { LayoutDashboard, ClipboardList, Factory, Trophy, CheckSquare } from "lucide-react";
+import { reportApi } from "../../lib/api/reportApi";
 import { EnterpriseOverview } from "./EnterpriseOverview";
 import { RequestManagement } from "./RequestManagement";
 import { CapacitySettings } from "./CapacitySettings";
 import { RewardConfiguration } from "./RewardConfiguration";
+import { EnterpriseTaskManagement } from "./EnterpriseTaskManagement";
 import { EnterpriseRequest } from "./types";
-
-// Mock Data
-const MOCK_REQUESTS: EnterpriseRequest[] = [
-  { id: 1, type: "Plastic", quantity: "50kg", location: "District 1, HCMC", status: "PENDING", date: "2024-03-10", requester: "Nguyen Van A" },
-  { id: 2, type: "Paper", quantity: "20kg", location: "District 3, HCMC", status: "PENDING", date: "2024-03-11", requester: "Tran Thi B" },
-  { id: 3, type: "Metal", quantity: "100kg", location: "Thu Duc City", status: "APPROVED", date: "2024-03-12", requester: "Le Van C" },
-];
 
 export const EnterpriseDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState("overview");
-  const [requests, setRequests] = useState(MOCK_REQUESTS);
+  const [requests, setRequests] = useState<EnterpriseRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Capacity State
   const [capacity, setCapacity] = useState({
@@ -31,6 +28,35 @@ export const EnterpriseDashboard: React.FC = () => {
      { type: "Paper", pointsPerKg: 5 },
   ]);
 
+  // Fetch reports from API
+  useEffect(() => {
+    const fetchReports = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await reportApi.getEnterpriseAvailableReports(1, 10, "Pending");
+        // Transform API response to EnterpriseRequest format
+        const transformedRequests: EnterpriseRequest[] = response.reports.map((report: any, index: number) => ({
+          id: index + 1, // Use index as ID since API doesn't provide sequential ID
+          type: report.categoryName || "Unknown",
+          quantity: "N/A", // API doesn't provide quantity
+          location: report.address || "Unknown",
+          status: report.status === "Pending" ? "PENDING" : report.status,
+          date: new Date(report.createdAt).toLocaleDateString("en-CA"),
+          requester: report.citizenName || "Unknown",
+        }));
+        setRequests(transformedRequests);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch reports");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchReports();
+  }, []);
+
   const handleStatusChange = (id: number, status: string) => {
     setRequests(prev => prev.map(req => req.id === id ? { ...req, status } : req));
   };
@@ -44,6 +70,7 @@ export const EnterpriseDashboard: React.FC = () => {
   const tabs = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "requests", label: "Requests", icon: ClipboardList },
+    { id: "tasks", label: "Task Assignment", icon: CheckSquare },
     { id: "capacity", label: "Capacity", icon: Factory },
     { id: "rewards", label: "Rewards", icon: Trophy },
   ];
@@ -79,6 +106,16 @@ export const EnterpriseDashboard: React.FC = () => {
 
       {/* Tab Content */}
       <div className="p-6 md:p-8">
+        {loading && activeTab === "requests" && (
+          <div className="text-center py-8">
+            <p className="text-gray-600">Loading reports...</p>
+          </div>
+        )}
+        {error && activeTab === "requests" && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-red-700">{error}</p>
+          </div>
+        )}
         {activeTab === "overview" && <EnterpriseOverview capacity={capacity} requests={requests} />}
         {activeTab === "requests" && (
             <RequestManagement 
@@ -87,6 +124,7 @@ export const EnterpriseDashboard: React.FC = () => {
                 onAssign={handleAssign}
             />
         )}
+        {activeTab === "tasks" && <EnterpriseTaskManagement />}
         {activeTab === "capacity" && <CapacitySettings capacity={capacity} onUpdate={setCapacity} />}
         {activeTab === "rewards" && <RewardConfiguration initialRules={rewardRules} />}
       </div>

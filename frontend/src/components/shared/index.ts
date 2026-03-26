@@ -6,3 +6,7 @@ export { CollectorCard } from "./CollectorCard";
 export { EnterpriseCard } from "./EnterpriseCard";
 export { StatCard } from "./StatCard";
 export { UserProfileCard } from "./UserProfileCard";
+
+// 🆕 Header/Navigation components - Shared UI enhancements
+export { NotificationCenter } from "./NotificationCenter";
+export { UserProfileMenu } from "./UserProfileMenu";

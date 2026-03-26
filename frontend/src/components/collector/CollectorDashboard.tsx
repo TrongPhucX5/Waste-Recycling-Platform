@@ -1,25 +1,43 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { LayoutDashboard, CheckCircle, MapPin, Search } from "lucide-react";
-import { TaskCard, Task } from "./TaskCard";
+import { TaskCard } from "./TaskCard";
 import { HistoryList } from "./HistoryList";
-import { Modal, Button, Input, Select, Badge } from "../ui";
-
-const MOCK_TASKS: Task[] = [
-  { id: 1, type: "Plastic", quantity: "50kg", location: "District 1, HCMC", status: "ASSIGNED", pickupTime: "2024-03-12 10:00", requester: "Nguyen Van A" },
-  { id: 2, type: "Paper", quantity: "20kg", location: "District 3, HCMC", status: "ON_THE_WAY", pickupTime: "2024-03-12 14:00", requester: "Tran Thi B" },
-  { id: 3, type: "Metal", quantity: "30kg", location: "District 7, HCMC", status: "ASSIGNED", pickupTime: "2024-03-12 16:30", requester: "Hoang Van C" },
-];
+import { Modal, Button, Input, Badge } from "../ui";
+import { collectorTaskApi, CollectionTask, CollectorStats } from "../../lib/api/collectorTaskApi";
 
 export const CollectorDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"tasks" | "history">("tasks");
-  const [tasks, setTasks] = useState(MOCK_TASKS);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [tasks, setTasks] = useState<CollectionTask[]>([]);
+  const [stats, setStats] = useState<CollectorStats>({ totalAssigned: 0, totalOnTheWay: 0, totalCollected: 0, totalWeightKg: 0 });
+  const [selectedTask, setSelectedTask] = useState<CollectionTask | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [collectionImage, setCollectionImage] = useState<File | null>(null);
   const [confirmNote, setConfirmNote] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const handleUpdateStatus = (task: Task) => {
+  useEffect(() => {
+    fetchData();
+  }, [activeTab]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [statsData, tasksData] = await Promise.all([
+        collectorTaskApi.getStats(),
+        collectorTaskApi.getTasks() // can filter server side or client side
+      ]);
+      setStats(statsData);
+      setTasks(tasksData.filter(t => t.status !== "Collected"));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = (task: CollectionTask) => {
     setSelectedTask(task);
     setIsModalOpen(true);
   };
@@ -29,36 +47,77 @@ export const CollectorDashboard: React.FC = () => {
     setSelectedTask(null);
     setCollectionImage(null);
     setConfirmNote("");
+    setWeightKg("");
   };
 
-  const updateTaskStatus = (id: number, newStatus: Task["status"]) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
-    closeModal();
+  const handleSetOnTheWay = async (id: string) => {
+    try {
+      await collectorTaskApi.setOnTheWay(id);
+      await fetchData(); // refresh data
+      closeModal();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update task status.");
+    }
+  };
+
+  const handleCompleteCollection = async (id: string) => {
+    if (!weightKg || isNaN(Number(weightKg))) {
+      alert("Please enter a valid weight.");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("WeightKg", weightKg);
+      formData.append("Notes", confirmNote);
+      if (collectionImage) {
+        formData.append("Images", collectionImage);
+      }
+
+      await collectorTaskApi.completeTask(id, formData);
+      await fetchData(); // refresh data
+      closeModal();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to complete task.");
+    }
   };
 
   const renderModalContent = () => {
     if (!selectedTask) return null;
 
-    if (selectedTask.status === "ASSIGNED") {
+    if (selectedTask.status === "Assigned") {
       return (
         <div className="space-y-4">
-          <p className="text-gray-600">You are about to start pickup for task <b>#{selectedTask.id}</b>.</p>
+          <p className="text-gray-600">You are about to start pickup for task <b>#{selectedTask.id.substring(0,8)}</b>.</p>
           <div className="bg-blue-50 p-4 rounded-md text-sm text-blue-700">
              Ensure you have the necessary equipment and vehicle ready before proceeding.
           </div>
           <div className="flex justify-end gap-2 mt-6">
             <Button variant="outline" onClick={closeModal}>Cancel</Button>
-            <Button onClick={() => updateTaskStatus(selectedTask.id, "ON_THE_WAY")}>Confirm Start</Button>
+            <Button onClick={() => handleSetOnTheWay(selectedTask.id)}>Confirm Start</Button>
           </div>
         </div>
       );
     }
 
-    if (selectedTask.status === "ON_THE_WAY") {
+    if (selectedTask.status === "OnTheWay") {
       return (
         <div className="space-y-4">
-          <p className="text-gray-600">Complete collection for task <b>#{selectedTask.id}</b>.</p>
+          <p className="text-gray-600">Complete collection for task <b>#{selectedTask.id.substring(0,8)}</b>.</p>
           
+          <div>
+             <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg) *</label>
+             <Input 
+               type="number"
+               value={weightKg} 
+               onChange={(e) => setWeightKg(e.target.value)} 
+               placeholder="e.g. 25" 
+               required
+             />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Proof of Collection (Image)</label>
             <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-emerald-500 transition-colors cursor-pointer bg-gray-50">
@@ -91,8 +150,8 @@ export const CollectorDashboard: React.FC = () => {
           <div className="flex justify-end gap-2 mt-6">
             <Button variant="outline" onClick={closeModal}>Cancel</Button>
             <Button 
-                onClick={() => updateTaskStatus(selectedTask.id, "COLLECTED")}
-                disabled={!collectionImage}
+                onClick={() => handleCompleteCollection(selectedTask.id)}
+                disabled={!collectionImage || !weightKg}
             >
                 Complete Collection
             </Button>
@@ -101,7 +160,7 @@ export const CollectorDashboard: React.FC = () => {
       );
     }
 
-    if (selectedTask.status === "COLLECTED" || selectedTask.status === "COMPLETED") {
+    if (selectedTask.status === "Collected") {
        return (
         <div className="space-y-4">
            <div className="bg-emerald-50 p-4 rounded-md flex items-start gap-3">
@@ -117,28 +176,21 @@ export const CollectorDashboard: React.FC = () => {
            <div className="grid grid-cols-2 gap-4 text-sm">
              <div>
                 <span className="text-gray-500 block">Type</span>
-                <span className="font-medium">{selectedTask.type}</span>
+                <span className="font-medium">{selectedTask.report.categoryName}</span>
              </div>
              <div>
                 <span className="text-gray-500 block">Quantity</span>
-                <span className="font-medium">{selectedTask.quantity}</span>
+                <span className="font-medium">{selectedTask.collectedWeightKg} kg</span>
              </div>
               <div>
                 <span className="text-gray-500 block">Location</span>
-                <span className="font-medium truncate">{selectedTask.location}</span>
+                <span className="font-medium truncate">{selectedTask.report.address}</span>
              </div>
              <div>
                 <span className="text-gray-500 block">Completed At</span>
-                <span className="font-medium">2024-03-12 14:45</span>
+                <span className="font-medium">{new Date(selectedTask.completedAt || "").toLocaleString()}</span>
              </div>
            </div>
-
-            <div className="mt-4">
-              <span className="text-gray-500 block text-sm mb-2">Proof of Collection</span>
-              <div className="bg-gray-100 rounded-lg h-32 flex items-center justify-center text-gray-400">
-                 [Image Placeholder]
-              </div>
-            </div>
 
            <div className="flex justify-end mt-6">
              <Button variant="outline" onClick={closeModal}>Close</Button>
@@ -153,11 +205,11 @@ export const CollectorDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">Assigned Tasks</p>
-                   <p className="text-3xl font-bold text-gray-900 mt-1">{tasks.filter(t => t.status === "ASSIGNED").length}</p>
+                   <p className="text-sm font-medium text-gray-500 uppercase">Open Tasks</p>
+                   <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalAssigned}</p>
                 </div>
                 <div className="p-3 bg-blue-50 rounded-full text-blue-600">
                    <LayoutDashboard className="h-6 w-6" />
@@ -165,20 +217,29 @@ export const CollectorDashboard: React.FC = () => {
             </div>
             <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">Completed Today</p>
-                   <p className="text-3xl font-bold text-emerald-600 mt-1">12</p>
+                   <p className="text-sm font-medium text-gray-500 uppercase">On The Way</p>
+                   <p className="text-3xl font-bold text-purple-600 mt-1">{stats.totalOnTheWay}</p>
+                </div>
+                <div className="p-3 bg-purple-50 rounded-full text-purple-600">
+                   <MapPin className="h-6 w-6" />
+                </div>
+            </div>
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
+                <div>
+                   <p className="text-sm font-medium text-gray-500 uppercase">Completed</p>
+                   <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.totalCollected}</p>
                 </div>
                 <div className="p-3 bg-emerald-50 rounded-full text-emerald-600">
                    <CheckCircle className="h-6 w-6" />
                 </div>
             </div>
-             <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">Current Location</p>
-                   <p className="text-lg font-bold text-gray-800 mt-1 truncate">District 1, HCMC</p>
+                   <p className="text-sm font-medium text-gray-500 uppercase">Total Weight</p>
+                   <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.totalWeightKg} kg</p>
                 </div>
-                <div className="p-3 bg-purple-50 rounded-full text-purple-600">
-                   <MapPin className="h-6 w-6" />
+                <div className="p-3 bg-emerald-50 rounded-full text-emerald-600">
+                   <CheckCircle className="h-6 w-6" />
                 </div>
             </div>
         </div>
@@ -215,16 +276,20 @@ export const CollectorDashboard: React.FC = () => {
 
             <div className="p-6">
                {activeTab === "tasks" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {tasks.map(task => (
-                      <TaskCard key={task.id} task={task} onUpdateStatus={handleUpdateStatus} />
-                    ))}
-                    {tasks.length === 0 && (
-                        <div className="col-span-full py-12 text-center text-gray-500">
-                           No tasks assigned at the moment.
-                        </div>
-                    )}
-                  </div>
+                  loading ? (
+                    <div className="py-12 text-center text-gray-500">Loading tasks...</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {tasks.map(task => (
+                        <TaskCard key={task.id} task={task} onUpdateStatus={handleUpdateStatus} />
+                      ))}
+                      {tasks.length === 0 && (
+                          <div className="col-span-full py-12 text-center text-gray-500">
+                             No tasks assigned at the moment.
+                          </div>
+                      )}
+                    </div>
+                  )
                ) : (
                   <HistoryList />
                )}
@@ -235,7 +300,7 @@ export const CollectorDashboard: React.FC = () => {
         <Modal 
           isOpen={isModalOpen}
           onClose={closeModal}
-          title={selectedTask ? `Update Task #${selectedTask.id}` : "Task Update"}
+          title={selectedTask ? `Update Task #${selectedTask.id.substring(0,8)}` : "Task Update"}
         >
            {renderModalContent()}
         </Modal>

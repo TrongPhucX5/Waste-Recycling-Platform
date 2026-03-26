@@ -1,6 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Camera, MapPin, Upload, Trash2, AlertCircle, X } from "lucide-react";
+import { 
+  Camera, MapPin, Upload, Trash2, AlertCircle, X, 
+  Image as ImageIcon, Map, FileText, CheckCircle2, Recycle, Package, Leaf 
+} from "lucide-react";
 import { categoryApi, WasteCategory } from "../../lib/api/categoryApi";
 import { reportApi } from "../../lib/api/reportApi";
 
@@ -95,6 +98,16 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
     return null;
   };
 
+  // Helper để chọn Icon sinh động hơn dựa trên tên loại rác
+  const getCategoryIcon = (name: string) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes("nhựa") || lowerName.includes("nilon")) return <Package size={24} />;
+    if (lowerName.includes("hữu cơ") || lowerName.includes("thực phẩm")) return <Leaf size={24} />;
+    if (lowerName.includes("giấy") || lowerName.includes("tái chế")) return <Recycle size={24} />;
+    return <Trash2 size={24} />;
+  };
+
+  // LOGIC SUBMIT NGUYÊN BẢN CỦA BẠN (KHÔNG MẤT 1 DÒNG NÀO)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -116,7 +129,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
       let finalLat = latitude;
       let finalLon = longitude;
 
-      // If user provided address but didn't use GPS, try to geocode it
+      // Nếu user cung cấp địa chỉ nhưng chưa dùng GPS, thử geocode nó
       if (finalLat === "" || finalLon === "") {
         const coords = await geocodeAddress(address);
         if (coords) {
@@ -137,7 +150,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
       formData.append("Address", address);
       formData.append("AiSuggestion", "");
       
-      // Append multiple images under the same key
+      // Nạp nhiều ảnh vào formData
       imageFiles.forEach(file => {
         formData.append("Images", file);
       });
@@ -154,23 +167,31 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Tạo Báo Cáo Thu Gom</h2>
-        <p className="text-gray-500 mt-1">Cung cấp thông tin và vài hình ảnh góc độ khác nhau để người thu gom dễ nhận biết rác tái chế.</p>
+    <div className="max-w-4xl mx-auto space-y-6">
+      
+      {/* Tiêu đề trang */}
+      <div className="mb-2">
+        <h2 className="text-2xl font-bold text-gray-900">Tạo Báo Cáo Thu Gom</h2>
+        <p className="text-gray-500 mt-1">Gửi hình ảnh và thông tin để đội thu gom xử lý nhanh chóng.</p>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2">
-          <AlertCircle size={20} />
-          {error}
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-start gap-3 shadow-sm">
+          <AlertCircle size={20} className="mt-0.5 shrink-0" />
+          <p className="text-sm font-medium">{error}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Upload Image Section */}
-        <div className="space-y-4">
-          <div className="border-2 border-dashed border-emerald-200 rounded-xl p-8 text-center bg-emerald-50/30 hover:bg-emerald-50/80 transition-colors relative group">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        
+        {/* KHỐI 1: TẢI ẢNH LÊN */}
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center gap-2 mb-4">
+            <ImageIcon className="text-emerald-500" size={20} />
+            <h3 className="text-lg font-bold text-gray-800">Hình ảnh hiện trường</h3>
+          </div>
+          
+          <div className="relative group cursor-pointer">
             <input 
               type="file" 
               accept="image/*" 
@@ -179,29 +200,29 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
               onChange={handleFileChange}
               required={imageFiles.length === 0}
             />
-            <div className="flex flex-col items-center pointer-events-none">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="border-2 border-dashed border-emerald-300 rounded-2xl p-10 text-center bg-emerald-50/50 group-hover:bg-emerald-50 transition-all duration-300">
+              <div className="w-16 h-16 bg-white text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm group-hover:scale-110 transition-transform duration-300">
                 <Camera size={32} />
               </div>
-              <h3 className="text-lg font-semibold text-emerald-800">Chụp hoặc Tải Lên Nhiều Ảnh Cùng Lúc</h3>
-              <p className="text-sm text-emerald-600/70 mt-1">Hỗ trợ JPG, PNG • Tối đa 5MB mỗi ảnh</p>
+              <h4 className="text-base font-semibold text-emerald-800">Kéo thả hoặc bấm để tải ảnh lên</h4>
+              <p className="text-sm text-emerald-600/70 mt-2">Hỗ trợ định dạng JPG, PNG • Tối đa 5MB / ảnh</p>
             </div>
           </div>
 
-          {/* Previews Grid */}
+          {/* Lưới hiển thị ảnh đã chọn */}
           {previews.length > 0 && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 mt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 mt-6">
               {previews.map((preview, index) => (
-                <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-emerald-100 shadow-sm group">
-                  <img src={preview} alt={`Preview ${index}`} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div key={index} className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-100 shadow-sm group">
+                  <img src={preview} alt={`Preview ${index}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
                     <button 
                       type="button"
                       onClick={() => removeImage(index)}
-                      className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors transform hover:scale-110"
-                      title="Xóa ảnh"
+                      className="bg-red-500 text-white p-2.5 rounded-full hover:bg-red-600 transition-all transform hover:scale-110 shadow-lg"
+                      title="Xóa ảnh này"
                     >
-                      <X size={16} />
+                      <X size={18} />
                     </button>
                   </div>
                 </div>
@@ -210,93 +231,129 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Location & GPS */}
-          <div className="col-span-1 md:col-span-2 space-y-2">
-            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <MapPin size={16} className="text-emerald-500" />
-              Vị Trí Nhận Rác
-            </label>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input 
-                type="text" 
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Ví dụ: 123 Đường Ngọc Khánh, Ba Đình..." 
-                className="flex-1 rounded-lg border-gray-200 border p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                required
-              />
+        {/* KHỐI 2: THÔNG TIN CHI TIẾT */}
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100 space-y-8">
+          
+          {/* Vị trí */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Map className="text-emerald-500" size={20} />
+              <label className="text-lg font-bold text-gray-800">Vị trí thu gom</label>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <MapPin size={18} className="text-gray-400" />
+                </div>
+                <input 
+                  type="text" 
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Nhập địa chỉ cụ thể..." 
+                  className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-gray-700"
+                  required
+                />
+              </div>
               <button 
                 type="button" 
                 onClick={handleGPSLocation}
                 disabled={isGettingGPS}
-                className="bg-emerald-100 text-emerald-700 px-4 py-3 rounded-lg font-medium hover:bg-emerald-200 transition-colors flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-70"
+                className="bg-emerald-100 text-emerald-700 px-6 py-3.5 rounded-xl font-semibold hover:bg-emerald-200 hover:shadow-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isGettingGPS ? (
                   <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-600 rounded-full animate-spin" />
                 ) : (
                   <MapPin size={18} />
                 )}
-                {isGettingGPS ? "Đang định vị..." : "GPS Ngay"}
+                {isGettingGPS ? "Đang định vị..." : "Lấy GPS"}
               </button>
             </div>
           </div>
 
-          {/* Waste Type selection */}
-          <div className="col-span-1 md:col-span-2 space-y-3">
-            <label className="text-sm font-semibold text-gray-700">Phân Loại Rác Tại Nguồn</label>
+          {/* Phân loại rác */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Recycle className="text-emerald-500" size={20} />
+              <label className="text-lg font-bold text-gray-800">Phân loại rác tại nguồn</label>
+            </div>
+            
             {isLoadingCat ? (
-              <p className="text-sm text-gray-500">Đang tải danh mục...</p>
+              <div className="flex items-center gap-2 text-gray-500 bg-gray-50 p-4 rounded-xl">
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                Đang tải danh mục...
+              </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {categories.map((category) => (
-                  <label key={category.id} className="relative cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="wasteType" 
-                      value={category.id} 
-                      onChange={() => setSelectedCategoryId(category.id)}
-                      checked={selectedCategoryId === category.id}
-                      className="peer sr-only" 
-                      required 
-                    />
-                    <div className="p-4 h-full rounded-xl border-2 border-gray-100 text-center hover:border-emerald-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50/50 transition-all bg-gray-50">
-                      <Trash2 className="mx-auto mb-2 text-emerald-500" size={24} />
-                      <span className="text-sm font-medium text-gray-700">{category.name}</span>
-                    </div>
-                  </label>
-                ))}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {categories.map((category) => {
+                  const isSelected = selectedCategoryId === category.id;
+                  return (
+                    <label key={category.id} className="relative cursor-pointer group">
+                      <input 
+                        type="radio" 
+                        name="wasteType" 
+                        value={category.id} 
+                        onChange={() => setSelectedCategoryId(category.id)}
+                        checked={isSelected}
+                        className="peer sr-only" 
+                        required 
+                      />
+                      <div className={`p-4 h-full rounded-xl border-2 text-center transition-all duration-200 flex flex-col items-center justify-center gap-3 relative overflow-hidden
+                        ${isSelected 
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm' 
+                          : 'border-gray-100 bg-gray-50 hover:border-emerald-200 hover:bg-white text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 text-emerald-500">
+                            <CheckCircle2 size={16} />
+                          </div>
+                        )}
+                        
+                        <div className={isSelected ? 'text-emerald-500' : 'text-gray-400 group-hover:text-emerald-400 transition-colors'}>
+                          {getCategoryIcon(category.name)}
+                        </div>
+                        <span className="text-sm font-semibold">{category.name}</span>
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          <div className="space-y-2 col-span-1 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700">Mô Tả Thêm (Ghi chú cho người thu gom)</label>
+          {/* Mô tả thêm */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <FileText className="text-emerald-500" size={20} />
+              <label className="text-lg font-bold text-gray-800">Ghi chú thêm (Tùy chọn)</label>
+            </div>
             <textarea 
               rows={3} 
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-lg border-gray-200 border p-3 focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-              placeholder="Ví dụ: Gọi tôi 10 phút trước khi đến..."
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none resize-none transition-all text-gray-700 placeholder:text-gray-400"
+              placeholder="Nhập ghi chú chi tiết cho người thu gom (ví dụ: Gọi tôi trước 10 phút, rác để ở cổng phụ...)"
             ></textarea>
           </div>
         </div>
 
-        <div className="pt-4 border-t border-gray-100">
+        {/* NÚT SUBMIT */}
+        <div className="pt-2">
           <button 
             type="submit" 
             disabled={isSubmitting}
-            className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-8 rounded-lg shadow-md shadow-emerald-500/30 transition-all disabled:opacity-70 flex items-center justify-center gap-2 text-lg"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-emerald-600/20 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg group"
           >
             {isSubmitting ? (
                <span className="flex items-center gap-2">
                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                 Đang Gửi...
+                 Đang Xử Lý...
                </span>
             ) : (
               <>
-                <Upload size={20} />
-                Tạo Báo Cáo Có Đính Kèm ({imageFiles.length}) Ảnh
+                <Upload size={22} className="group-hover:-translate-y-1 transition-transform duration-200" />
+                Gửi Báo Cáo {imageFiles.length > 0 ? `(${imageFiles.length} ảnh)` : ''}
               </>
             )}
           </button>

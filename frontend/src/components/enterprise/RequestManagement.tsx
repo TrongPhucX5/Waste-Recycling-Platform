@@ -7,6 +7,7 @@ import {
   Select, 
   Modal 
 } from "../ui";
+import { reportApi } from "../../lib/api/reportApi";
 import { EnterpriseRequest } from "./types";
 
 interface RequestManagementProps {
@@ -25,6 +26,40 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
   const [selectedRequest, setSelectedRequest] = useState<EnterpriseRequest | null>(null);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedCollector, setSelectedCollector] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAccept = async (reportId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await reportApi.acceptReport(reportId);
+      onStatusChange(requests.find(r => r.id.toString() === reportId)?.id || 0, "APPROVED");
+      alert(response.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to accept report";
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = async (reportId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await reportApi.rejectReport(reportId);
+      onStatusChange(requests.find(r => r.id.toString() === reportId)?.id || 0, "REJECTED");
+      alert(response.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to reject report";
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAssignClick = () => {
     if (selectedRequest && selectedCollector) {
@@ -71,16 +106,18 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
                        <Button 
                          size="sm" 
                          variant="primary" 
-                         onClick={() => onStatusChange(row.id, "APPROVED")}
+                         onClick={() => handleAccept(row.id.toString())}
+                         disabled={loading}
                        >
-                         Approve
+                         {loading ? "Processing..." : "Approve"}
                        </Button>
                        <Button 
                          size="sm" 
                          variant="danger" 
-                         onClick={() => onStatusChange(row.id, "REJECTED")}
+                         onClick={() => handleReject(row.id.toString())}
+                         disabled={loading}
                        >
-                         Reject
+                         {loading ? "Processing..." : "Reject"}
                        </Button>
                      </>
                    )}
