@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { LayoutDashboard, ClipboardList, Factory, Trophy, CheckSquare } from "lucide-react";
 import { reportApi } from "../../lib/api/reportApi";
+import { enterpriseTaskApi, EnterpriseWasteCategory, EnterpriseProfile } from "../../lib/api/enterpriseTaskApi";
 import { EnterpriseOverview } from "./EnterpriseOverview";
 import { RequestManagement } from "./RequestManagement";
 import { CapacitySettings } from "./CapacitySettings";
@@ -14,34 +15,42 @@ export const EnterpriseDashboard: React.FC = () => {
   const [requests, setRequests] = useState<EnterpriseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Capacity State
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [enterpriseProfile, setEnterpriseProfile] = useState<EnterpriseProfile>({
+    id: "",
+    companyName: "",
+    serviceArea: "",
+    capacityKgPerDay: null,
+  });
+  const [categories, setCategories] = useState<EnterpriseWasteCategory[]>([]);
+  const [acceptedWasteTypeIds, setAcceptedWasteTypeIds] = useState<number[]>([]);
+
+  // Capacity State for overview card
   const [capacity, setCapacity] = useState({
     wasteTypes: ["plastic", "paper"],
-    maxCapacity: 5000, 
-    serviceArea: "HCMC"
+    maxCapacity: 5000,
+    serviceArea: "HCMC",
   });
 
   // Reward Rules State
   const [rewardRules, setRewardRules] = useState([
-     { type: "Plastic", pointsPerKg: 10 },
-     { type: "Paper", pointsPerKg: 5 },
+    { type: "Plastic", pointsPerKg: 10 },
+    { type: "Paper", pointsPerKg: 5 },
   ]);
 
-  // Fetch reports from API
   useEffect(() => {
     const fetchReports = async () => {
       setLoading(true);
       setError(null);
       try {
         const response = await reportApi.getEnterpriseAvailableReports(1, 10, "Pending");
-        // Transform API response to EnterpriseRequest format
-        const transformedRequests: EnterpriseRequest[] = response.reports.map((report: any, index: number) => ({
-          id: index + 1, // Use index as ID since API doesn't provide sequential ID
+        const transformedRequests: EnterpriseRequest[] = response.reports.map((report: any) => ({
+          reportId: report.id,
           type: report.categoryName || "Unknown",
-          quantity: "N/A", // API doesn't provide quantity
+          quantity: "N/A",
           location: report.address || "Unknown",
-          status: report.status === "Pending" ? "PENDING" : report.status,
+          status: report.status || "Pending",
           date: new Date(report.createdAt).toLocaleDateString("en-CA"),
           requester: report.citizenName || "Unknown",
         }));
@@ -53,18 +62,86 @@ export const EnterpriseDashboard: React.FC = () => {
         setLoading(false);
       }
     };
-    
+
+    const fetchEnterpriseProfile = async () => {
+      setProfileLoading(true);
+      setProfileError(null);
+      try {
+        const profileResponse = await enterpriseTaskApi.getProfile();
+        const wasteTypesResponse = await enterpriseTaskApi.getWasteTypes();
+
+        setEnterpriseProfile({
+          id: profileResponse.id,
+          companyName: profileResponse.companyName,
+          serviceArea: profileResponse.serviceArea ?? "",
+          capacityKgPerDay: profileResponse.capacityKgPerDay,
+        });
+        setCategories(wasteTypesResponse.allCategories);
+        setAcceptedWasteTypeIds(wasteTypesResponse.acceptedIds);
+
+        setCapacity({
+          wasteTypes: wasteTypesResponse.allCategories
+            .filter((category) => wasteTypesResponse.acceptedIds.includes(category.id))
+            .map((category) => category.name),
+          maxCapacity: profileResponse.capacityKgPerDay ?? 0,
+          serviceArea: profileResponse.serviceArea ?? "",
+        });
+      } catch (err) {
+        setProfileError(err instanceof Error ? err.message : "Failed to load enterprise profile");
+        console.error(err);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
     fetchReports();
+    fetchEnterpriseProfile();
   }, []);
 
-  const handleStatusChange = (id: number, status: string) => {
-    setRequests(prev => prev.map(req => req.id === id ? { ...req, status } : req));
+  const handleStatusChange = (reportId: string, status: string) => {
+    setRequests((prev) => prev.map((req) => (req.reportId === reportId ? { ...req, status } : req)));
   };
 
-  const handleAssign = (requestId: number, collectorId: string) => {
-      // Simulate assignment
-      handleStatusChange(requestId, "ASSIGNED");
-      alert(`Task assigned to collector ${collectorId}`);
+  const handleAssign = (reportId: string, collectorId: string) => {
+    handleStatusChange(reportId, "Assigned");
+    alert(`Task assigned to collector ${collectorId}`);
+  };
+
+  const handleSaveCapacity = async (payload: {
+    serviceArea: string;
+    capacityKgPerDay: number | null;
+    wasteCategoryIds: number[];
+  }) => {
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      await enterpriseTaskApi.updateProfile({
+        serviceArea: payload.serviceArea,
+        capacityKgPerDay: payload.capacityKgPerDay,
+      });
+      await enterpriseTaskApi.updateWasteTypes({ wasteCategoryIds: payload.wasteCategoryIds });
+
+      setEnterpriseProfile((prev) => ({
+        ...prev,
+        serviceArea: payload.serviceArea,
+        capacityKgPerDay: payload.capacityKgPerDay,
+      }));
+      setAcceptedWasteTypeIds(payload.wasteCategoryIds);
+      setCapacity({
+        wasteTypes: categories
+          .filter((category) => payload.wasteCategoryIds.includes(category.id))
+          .map((category) => category.name),
+        maxCapacity: payload.capacityKgPerDay ?? 0,
+        serviceArea: payload.serviceArea,
+      });
+      alert("Enterprise profile updated successfully.");
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : "Failed to save enterprise settings");
+      console.error(err);
+      alert(profileError || "Failed to save enterprise settings.");
+    } finally {
+      setProfileLoading(false);
+    }
   };
 
   const tabs = [
@@ -125,7 +202,16 @@ export const EnterpriseDashboard: React.FC = () => {
             />
         )}
         {activeTab === "tasks" && <EnterpriseTaskManagement />}
-        {activeTab === "capacity" && <CapacitySettings capacity={capacity} onUpdate={setCapacity} />}
+        {activeTab === "capacity" && (
+          <CapacitySettings
+            profile={enterpriseProfile}
+            categories={categories}
+            acceptedIds={acceptedWasteTypeIds}
+            onSave={handleSaveCapacity}
+            saving={profileLoading}
+            error={profileError}
+          />
+        )}
         {activeTab === "rewards" && <RewardConfiguration initialRules={rewardRules} />}
       </div>
     </div>

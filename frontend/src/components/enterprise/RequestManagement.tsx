@@ -12,8 +12,8 @@ import { EnterpriseRequest } from "./types";
 
 interface RequestManagementProps {
   requests: EnterpriseRequest[];
-  onStatusChange: (id: number, status: string) => void;
-  onAssign: (requestId: number, collectorId: string) => void;
+  onStatusChange: (reportId: string, status: string) => void;
+  onAssign: (reportId: string, collectorId: string) => void;
 }
 
 const MOCK_COLLECTORS = [
@@ -34,7 +34,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
     setError(null);
     try {
       const response = await reportApi.acceptReport(reportId);
-      onStatusChange(requests.find(r => r.id.toString() === reportId)?.id || 0, "APPROVED");
+      onStatusChange(reportId, "APPROVED");
       alert(response.message);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to accept report";
@@ -50,7 +50,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
     setError(null);
     try {
       const response = await reportApi.rejectReport(reportId);
-      onStatusChange(requests.find(r => r.id.toString() === reportId)?.id || 0, "REJECTED");
+      onStatusChange(reportId, "REJECTED");
       alert(response.message);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to reject report";
@@ -63,7 +63,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
 
   const handleAssignClick = () => {
     if (selectedRequest && selectedCollector) {
-      onAssign(selectedRequest.id, selectedCollector);
+      onAssign(selectedRequest.reportId, selectedCollector);
       setAssignModalOpen(false);
       setSelectedCollector("");
       setSelectedRequest(null);
@@ -82,7 +82,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
        <Table
           data={requests}
           columns={[
-            { label: "ID", key: "id" },
+            { label: "ID", key: "reportId" },
             { label: "Type", key: "type" },
             { label: "Quantity", key: "quantity" },
             { label: "Location", key: "location" },
@@ -101,12 +101,12 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
                key: "id",
                render: (_: any, row: any) => (
                  <div className="flex gap-2">
-                   {row.status === "PENDING" && (
+                   {row.status?.toString().toUpperCase() === "PENDING" && (
                      <>
                        <Button 
                          size="sm" 
                          variant="primary" 
-                         onClick={() => handleAccept(row.id.toString())}
+                         onClick={() => handleAccept(row.reportId)}
                          disabled={loading}
                        >
                          {loading ? "Processing..." : "Approve"}
@@ -114,14 +114,14 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
                        <Button 
                          size="sm" 
                          variant="danger" 
-                         onClick={() => handleReject(row.id.toString())}
+                         onClick={() => handleReject(row.reportId)}
                          disabled={loading}
                        >
                          {loading ? "Processing..." : "Reject"}
                        </Button>
                      </>
                    )}
-                   {row.status === "APPROVED" && (
+                   {row.status?.toString().toUpperCase() === "ACCEPTED" && (
                       <Button 
                         size="sm" 
                         variant="secondary"
@@ -149,7 +149,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
       >
         <div className="space-y-4">
            <p className="text-sm text-gray-600">
-             Assigning request <b>#{selectedRequest?.id}</b> ({selectedRequest?.type}, {selectedRequest?.quantity})
+             Assigning request <b>#{selectedRequest?.reportId}</b> ({selectedRequest?.type}, {selectedRequest?.quantity})
            </p>
            
            <div>

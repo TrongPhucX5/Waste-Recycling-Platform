@@ -1,5 +1,5 @@
 export interface EnterpriseRequest {
-  id: number;
+  reportId: string;
   type: string;
   quantity: string;
   location: string;

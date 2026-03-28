@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -170,6 +171,185 @@ public class EnterpriseTaskController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy hồ sơ doanh nghiệp và các loại rác đang tiếp nhận
+    /// </summary>
+    [HttpGet("profile")]
+    public async Task<IActionResult> GetProfile()
+    {
+        var enterprise = await GetCurrentEnterpriseAsync();
+        if (enterprise == null)
+            return Unauthorized(new { message = "Enterprise profile not found." });
+
+        var acceptedWasteTypes = await _context.EnterpriseWasteTypes
+            .Where(wt => wt.EnterpriseId == enterprise.Id)
+            .Include(wt => wt.WasteCategory)
+            .Select(wt => new
+            {
+                wt.WasteCategoryId,
+                CategoryName = wt.WasteCategory.Name
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            enterprise.Id,
+            enterprise.CompanyName,
+            enterprise.ServiceArea,
+            enterprise.CapacityKgPerDay,
+            AcceptedWasteTypes = acceptedWasteTypes
+        });
+    }
+
+    /// <summary>
+    /// Cập nhật thông tin năng lực xử lý rác của Enterprise
+    /// </summary>
+    [HttpPut("profile")]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateEnterpriseProfileRequest request)
+    {
+        var enterprise = await GetCurrentEnterpriseAsync();
+        if (enterprise == null)
+            return Unauthorized(new { message = "Enterprise profile not found." });
+
+        enterprise.ServiceArea = string.IsNullOrWhiteSpace(request.ServiceArea) ? null : request.ServiceArea.Trim();
+        enterprise.CapacityKgPerDay = request.CapacityKgPerDay;
+
+        _context.Enterprises.Update(enterprise);
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Enterprise profile updated successfully",
+            enterprise.Id,
+            enterprise.ServiceArea,
+            enterprise.CapacityKgPerDay
+        });
+    }
+
+    /// <summary>
+    /// Lấy danh sách loại rác có thể xử lý và các loại rác đang được lựa chọn
+    /// </summary>
+    [HttpGet("waste-types")]
+    public async Task<IActionResult> GetWasteTypes()
+    {
+        var enterprise = await GetCurrentEnterpriseAsync();
+        if (enterprise == null)
+            return Unauthorized(new { message = "Enterprise profile not found." });
+
+        var allCategories = await _context.WasteCategories
+            .OrderBy(c => c.Name)
+            .Select(c => new
+            {
+                c.Id,
+                c.Name
+            })
+            .ToListAsync();
+
+        var acceptedIds = await _context.EnterpriseWasteTypes
+            .Where(wt => wt.EnterpriseId == enterprise.Id)
+            .Select(wt => wt.WasteCategoryId)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            allCategories,
+            acceptedIds
+        });
+    }
+
+    /// <summary>
+    /// Cập nhật danh sách loại rác Enterprise tiếp nhận
+    /// </summary>
+    [HttpPut("waste-types")]
+    public async Task<IActionResult> UpdateWasteTypes([FromBody] UpdateEnterpriseWasteTypesRequest request)
+    {
+        var enterprise = await GetCurrentEnterpriseAsync();
+        if (enterprise == null)
+            return Unauthorized(new { message = "Enterprise profile not found." });
+
+        var validCategoryIds = await _context.WasteCategories
+            .Where(c => request.WasteCategoryIds.Contains(c.Id))
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        if (validCategoryIds.Count != request.WasteCategoryIds.Distinct().Count())
+            return BadRequest(new { message = "One or more selected waste categories are invalid." });
+
+        var existingTypes = await _context.EnterpriseWasteTypes
+            .Where(wt => wt.EnterpriseId == enterprise.Id)
+            .ToListAsync();
+
+        var existingIds = existingTypes.Select(wt => wt.WasteCategoryId).ToHashSet();
+        var toRemove = existingTypes.Where(wt => !validCategoryIds.Contains(wt.WasteCategoryId)).ToList();
+        _context.EnterpriseWasteTypes.RemoveRange(toRemove);
+
+        var toAdd = validCategoryIds.Except(existingIds)
+            .Select(id => new EnterpriseWasteType
+            {
+                EnterpriseId = enterprise.Id,
+                WasteCategoryId = id
+            });
+
+        await _context.EnterpriseWasteTypes.AddRangeAsync(toAdd);
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Accepted waste categories updated successfully",
+            acceptedIds = validCategoryIds
+        });
+    }
+
+    private static IEnumerable<string> ParseServiceAreaValues(string? serviceArea)
+    {
+        if (string.IsNullOrWhiteSpace(serviceArea))
+            return Array.Empty<string>();
+
+        try
+        {
+            using var document = JsonDocument.Parse(serviceArea);
+            if (document.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                return document.RootElement.EnumerateArray()
+                    .Where(e => e.ValueKind == JsonValueKind.String)
+                    .Select(e => e.GetString()!.Trim())
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .ToList();
+            }
+
+            if (document.RootElement.ValueKind == JsonValueKind.String)
+            {
+                var value = document.RootElement.GetString();
+                return string.IsNullOrWhiteSpace(value)
+                    ? Array.Empty<string>()
+                    : new[] { value.Trim() };
+            }
+        }
+        catch (JsonException)
+        {
+            // not valid JSON, fallback to comma-separated text
+        }
+
+        return serviceArea.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(value => value.Trim())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToList();
+    }
+
+    private static bool IsReportInServiceArea(WasteReport report, IEnumerable<string> serviceAreaTerms)
+    {
+        var terms = serviceAreaTerms.Where(value => !string.IsNullOrWhiteSpace(value)).ToList();
+        if (!terms.Any())
+            return true;
+
+        if (!string.IsNullOrWhiteSpace(report.Address))
+        {
+            return terms.Any(term => report.Address.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Lấy thống kê công việc của Enterprise
     /// </summary>
     [HttpGet("stats")]
@@ -211,3 +391,13 @@ public class AssignCollectorRequest
 {
     public Guid CollectorId { get; set; }
 }
+        public class UpdateEnterpriseProfileRequest
+        {
+            public string? ServiceArea { get; set; }
+            public int? CapacityKgPerDay { get; set; }
+        }
+
+        public class UpdateEnterpriseWasteTypesRequest
+        {
+            public List<int> WasteCategoryIds { get; set; } = new();
+        }
