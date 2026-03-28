@@ -21,7 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const getHomeHref = () => {
     if (!isAuthenticated) return "/";
     
-    switch (user?.role) {
+    switch (user?.role?.toLowerCase()) {
       case 'citizen': return '/citizen/dashboard';
       case 'collector': return '/collector/dashboard';
       case 'enterprise': return '/enterprise/dashboard';
@@ -34,49 +34,51 @@ export const Navbar: React.FC<NavbarProps> = ({
   const getMenuItems = () => {
     const homeHref = getHomeHref();
     
-    const publicMenu = [
-      { label: "TRANG CHỦ", href: "/" },
-      { label: "GIỚI THIỆU", href: "/about" },
-      { label: "TÍNH NĂNG", href: "/features" },
-      { label: "LIÊN HỆ", href: "/contact" },
+    // Guest Menu - Tập trung vào giới thiệu và điều hướng
+    const guestMenu = [
+      { label: "Trang Chủ", href: "/" },
+      { label: "Hướng Dẫn", href: "/guide" },
+      { label: "Tra Cứu Điểm", href: "/locations" },
+      { label: "Bảng Xếp Hạng", href: "/leaderboard" },
     ];
 
     const citizenMenu = [
-      { label: "TRANG CHỦ", href: homeHref },
-      { label: "BẢNG ĐIỀU KHIỂN", href: "/citizen/dashboard" },
-      { label: "BÁO CÁO RÁC", href: "/citizen/reports" },
-      { label: "ĐIỂM THƯỞNG", href: "/citizen/rewards" },
+      { label: "Trang Chủ", href: "/" },
+      { label: "Bảng Điều Khiển", href: "/citizen/dashboard" },
+      { label: "Tạo Báo Cáo", href: "/citizen/create-report" },
+      { label: "Quản Lý Báo Cáo", href: "/citizen/reports" },
+      { label: "Điểm Thưởng", href: "/citizen/rewards" },
     ];
 
     const collectorMenu = [
-      { label: "TRANG CHỦ", href: homeHref },
-      { label: "BẢNG ĐIỀU KHIỂN", href: "/collector/dashboard" },
-      { label: "TUYẾN ĐƯỜNG", href: "/collector/routes" },
-      { label: "THU GOM", href: "/collector/collection" },
+      { label: "Trang Chủ", href: "/" },
+      { label: "Bảng Điều Khiển", href: "/collector/dashboard" },
+      { label: "Tuyến Đường", href: "/collector/routes" },
+      { label: "Thu Gom", href: "/collector/collection" },
     ];
 
     const enterpriseMenu = [
-      { label: "TRANG CHỦ", href: homeHref },
-      { label: "BẢNG ĐIỀU KHIỂN", href: "/enterprise/dashboard" },
-      { label: "QUẢN LÝ ĐIỂM", href: "/enterprise/points" },
-      { label: "BÁO CÁO", href: "/enterprise/reports" },
+      { label: "Trang Chủ", href: "/" },
+      { label: "Bảng Điều Khiển", href: "/enterprise/dashboard" },
+      { label: "Quản Lý Điểm", href: "/enterprise/points" },
+      { label: "Báo Cáo", href: "/enterprise/reports" },
     ];
 
     const adminMenu = [
-      { label: "TRANG CHỦ", href: homeHref },
-      { label: "BẢNG ĐIỀU KHIỂN", href: "/admin/dashboard" },
-      { label: "QUẢN LÝ NGƯỜI DÙNG", href: "/admin/users" },
-      { label: "QUẢN LÝ HỆ THỐNG", href: "/admin/system" },
+      { label: "Trang Chủ", href: "/" },
+      { label: "Bảng Điều Khiển", href: "/admin/dashboard" },
+      { label: "Quản Lý Người Dùng", href: "/admin/users" },
+      { label: "Quản Lý Hệ Thống", href: "/admin/system" },
     ];
 
-    if (!isAuthenticated) return publicMenu;
+    if (!isAuthenticated) return guestMenu;
     
-    switch (user?.role) {
+    switch (user?.role?.toLowerCase()) {
       case 'citizen': return citizenMenu;
       case 'collector': return collectorMenu;
       case 'enterprise': return enterpriseMenu;
       case 'admin': return adminMenu;
-      default: return publicMenu;
+      default: return guestMenu;
     }
   };
 
@@ -84,16 +86,20 @@ export const Navbar: React.FC<NavbarProps> = ({
   const homeHref = getHomeHref();
 
   // Danh sách các trang cho phép hiển thị Navbar này
-  const publicPaths = ["/", "/login", "/register", "/reset-password", "/about", "/features", "/contact"];
+  const publicPaths = ["/", "/about", "/features", "/contact", "/guide", "/locations", "/leaderboard"];
   const protectedPaths = ["/dashboard", "/reports", "/rewards", "/citizen", "/collector", "/enterprise", "/admin"];
+  const authPaths = ["/login", "/register", "/reset-password"];
   
   // Kiểm tra xem pathname hiện tại có nằm trong danh sách không
   const shouldShowNavbar = publicPaths.includes(pathname) || 
                            pathname?.startsWith("/reset-password") ||
                            protectedPaths.some(path => pathname?.startsWith(path));
 
-  // Nếu không thuộc các trang trên thì ẩn hoàn toàn Navbar này
-  if (!shouldShowNavbar) {
+  // Ẩn navbar trên auth pages
+  const isAuthPage = authPaths.some(path => pathname?.startsWith(path));
+
+  // Nếu là auth page hoặc không thuộc các trang trên thì ẩn hoàn toàn Navbar này
+  if (isAuthPage || !shouldShowNavbar) {
     return null; 
   }
 
@@ -104,11 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <nav
-      className={`z-50 ${
-        transparent
-          ? "absolute top-0 w-full"
-          : "bg-white sticky top-0 border-b border-gray-100"
-      }`}
+      className="z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">

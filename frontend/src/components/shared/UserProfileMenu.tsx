@@ -23,7 +23,8 @@ export const UserProfileMenu: React.FC = () => {
     admin: '/admin/dashboard',
   };
 
-  const dashboardLink = dashboardLinks[user.role as keyof typeof dashboardLinks] || '/';
+  const roleStr = user.role.toLowerCase() as keyof typeof dashboardLinks;
+  const dashboardLink = dashboardLinks[roleStr] || '/';
 
   // Hàm xử lý đăng xuất
   const handleLogout = () => {
@@ -61,7 +62,7 @@ export const UserProfileMenu: React.FC = () => {
               {user.email}
             </p>
             <span className="inline-block mt-2 px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">
-              {user.role === 'citizen' ? 'Công dân' : user.role === 'collector' ? 'Tài xế' : user.role === 'enterprise' ? 'Doanh nghiệp' : 'Quản trị viên'}
+              {roleStr === 'citizen' ? 'Công dân' : roleStr === 'collector' ? 'Tài xế' : roleStr === 'enterprise' ? 'Doanh nghiệp' : 'Quản trị viên'}
             </span>
           </div>
 
