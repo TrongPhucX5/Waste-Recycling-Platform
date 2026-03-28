@@ -55,9 +55,6 @@ export default function AuthLayout({
         </div>
       </div>
 
-      {/* Top Navigation */}
-      <Navbar />
-
       {/* Main Content Grid */}
       <div className="container mx-auto px-6 z-10 flex-1 flex flex-col lg:flex-row items-center justify-center py-10 gap-16 lg:gap-20">
         {/* Left Side: Landing Content */}
