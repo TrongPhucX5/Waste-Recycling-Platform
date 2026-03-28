@@ -1,10 +1,18 @@
-import React from 'react';
-import { AdminDashboard } from '../../components/admin/AdminDashboard';
+"use client";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Chuyển hướng đến dashboard chính
+    router.replace("/admin/dashboard");
+  }, [router]);
+
   return (
-    <div className="h-screen bg-gray-50">
-      <AdminDashboard />
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
     </div>
   );
 }

@@ -14,13 +14,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({
   children,
   navbar = {
-    brandName: "Waste Recycling",
-    menuItems: [
-      { label: "Home", href: "/" },
-      { label: "Report Waste", href: "/report" },
-      { label: "Rewards", href: "/rewards" },
-      { label: "Contact", href: "/contact" },
-    ],
+    transparent: false,
   },
   sidebar,
   footer = {

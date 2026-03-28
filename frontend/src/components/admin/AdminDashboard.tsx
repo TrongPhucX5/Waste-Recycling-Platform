@@ -120,7 +120,7 @@ export const AdminDashboard: React.FC = () => {
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {user?.fullName || "Administrator"}
                 </p>
-                <p className="text-xs text-gray-500 truncate">admin@system.com</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>
             </div>
           )}

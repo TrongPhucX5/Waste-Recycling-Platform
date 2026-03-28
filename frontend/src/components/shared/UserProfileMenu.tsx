@@ -4,18 +4,17 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const UserProfileMenu: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
 
-  // DỮ LIỆU GIẢ (MOCK DATA) ĐỂ HIỂN THỊ UI FRONTEND
-  // Bạn có thể sửa các thông tin này để xem UI thay đổi thế nào
-  const mockUser = {
-    fullName: "Nguyễn Văn A",
-    email: "nguyenvana@example.com",
-    role: "citizen"
-  };
+  // Nếu chưa đăng nhập thì không hiển thị component
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   const dashboardLinks = {
     citizen: '/citizen/dashboard',
@@ -24,12 +23,13 @@ export const UserProfileMenu: React.FC = () => {
     admin: '/admin/dashboard',
   };
 
-  const dashboardLink = dashboardLinks[mockUser.role as keyof typeof dashboardLinks] || '/';
+  const roleStr = user.role.toLowerCase() as keyof typeof dashboardLinks;
+  const dashboardLink = dashboardLinks[roleStr] || '/';
 
-  // Hàm xử lý đăng xuất giả lập (Chỉ chuyển hướng)
+  // Hàm xử lý đăng xuất
   const handleLogout = () => {
     setIsOpen(false);
-    router.push('/login'); // Chuyển hướng về trang đăng nhập
+    logout();
   };
 
   return (
@@ -45,7 +45,7 @@ export const UserProfileMenu: React.FC = () => {
         
         {/* Tên người dùng */}
         <span className="hidden sm:inline text-sm font-medium text-gray-700">
-          {mockUser.fullName}
+          {user.fullName}
         </span>
         <ChevronDown size={16} className="text-gray-500" />
       </button>
@@ -56,13 +56,13 @@ export const UserProfileMenu: React.FC = () => {
           {/* Profile Section */}
           <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50 rounded-t-lg">
             <p className="text-sm font-semibold text-gray-900 truncate">
-              {mockUser.fullName}
+              {user.fullName}
             </p>
             <p className="text-xs text-gray-500 truncate">
-              {mockUser.email}
+              {user.email}
             </p>
             <span className="inline-block mt-2 px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">
-              Công dân
+              {roleStr === 'citizen' ? 'Công dân' : roleStr === 'collector' ? 'Tài xế' : roleStr === 'enterprise' ? 'Doanh nghiệp' : 'Quản trị viên'}
             </span>
           </div>
 

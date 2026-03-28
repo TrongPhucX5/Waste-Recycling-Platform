@@ -42,7 +42,7 @@ export const RewardsTab: React.FC = () => {
             
             {/* NÚT ĐỔI QUÀ - Đã bọc bằng Link chuẩn bị cho trang sau này */}
             <Link 
-              href="/citizen/rewards-store" // Route dự kiến
+              href="/citizen/rewards" // Đã trỏ đúng route
               className="bg-white text-emerald-700 hover:bg-emerald-50 hover:-translate-y-1 focus:ring-4 focus:ring-emerald-200 font-bold py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md flex items-center gap-2 group"
             >
               <Gift size={20} className="group-hover:rotate-12 transition-transform" />

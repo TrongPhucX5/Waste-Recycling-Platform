@@ -78,7 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (email: string, password: string) => {
       const res = await authApi.login({ email, password });
       persist(res.token, res.user);
-      router.push(ROLE_DASHBOARD[res.user.role] ?? "/");
+      const roleStr = res.user.role.toLowerCase() as UserRole;
+      router.push(ROLE_DASHBOARD[roleStr] ?? "/");
     },
     [persist, router],
   );
