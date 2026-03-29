@@ -46,6 +46,18 @@ export interface EnterpriseTaskStats {
   totalWeightKg: number;
 }
 
+export interface EnterpriseWasteCategory {
+  id: number;
+  name: string;
+}
+
+export interface EnterpriseProfile {
+  id: string;
+  companyName: string;
+  serviceArea: string | null;
+  capacityKgPerDay: number | null;
+}
+
 export const enterpriseTaskApi = {
   /**
    * Fetches collection tasks for the current enterprise
@@ -80,5 +92,42 @@ export const enterpriseTaskApi = {
    */
   getStats: () => {
     return apiClient.get<EnterpriseTaskStats>(`/enterprise/tasks/stats`);
+  },
+
+  /**
+   * Get enterprise profile and accepted waste types
+   */
+  getProfile: () => {
+    return apiClient.get<{
+      id: string;
+      companyName: string;
+      serviceArea: string | null;
+      capacityKgPerDay: number | null;
+      acceptedWasteTypes: Array<{ wasteCategoryId: number; categoryName: string }>;
+    }>(`/enterprise/tasks/profile`);
+  },
+
+  /**
+   * Update enterprise profile fields
+   */
+  updateProfile: (payload: { serviceArea: string; capacityKgPerDay: number | null }) => {
+    return apiClient.put<{ message: string }>(`/enterprise/tasks/profile`, payload);
+  },
+
+  /**
+   * Get available waste categories and currently accepted category IDs
+   */
+  getWasteTypes: () => {
+    return apiClient.get<{
+      allCategories: Array<{ id: number; name: string }>;
+      acceptedIds: number[];
+    }>(`/enterprise/tasks/waste-types`);
+  },
+
+  /**
+   * Update the list of accepted waste categories for this enterprise
+   */
+  updateWasteTypes: (payload: { wasteCategoryIds: number[] }) => {
+    return apiClient.put<{ message: string }>(`/enterprise/tasks/waste-types`, payload);
   },
 };

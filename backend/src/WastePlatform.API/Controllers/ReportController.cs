@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -202,6 +203,24 @@ public class ReportController : ControllerBase
             if (report.Status != ReportStatus.Pending)
                 return BadRequest(new { message = $"Report can only be accepted if it is in Pending status. Current status: {report.Status}" });
 
+            // Ensure enterprise accepts this waste category
+            var acceptedWasteCategoryIds = await _context.EnterpriseWasteTypes
+                .Where(ewt => ewt.EnterpriseId == enterprise.Id)
+                .Select(ewt => ewt.WasteCategoryId)
+                .ToListAsync();
+
+            if (!report.WasteCategoryId.HasValue || !acceptedWasteCategoryIds.Contains(report.WasteCategoryId.Value))
+            {
+                return BadRequest(new { message = "This report's waste category is not handled by your enterprise." });
+            }
+
+            // Ensure report is within enterprise service area
+            var serviceAreaTerms = ParseServiceAreaValues(enterprise.ServiceArea);
+            if (!IsReportInServiceArea(report, serviceAreaTerms))
+            {
+                return BadRequest(new { message = "This report is outside your enterprise service area." });
+            }
+
             // Update report status to Accepted
             report.Accept();
 
@@ -321,6 +340,56 @@ public class ReportController : ControllerBase
         {
             return StatusCode(500, new { message = "Internal server error", error = ex.Message });
         }
+    }
+
+    private static IEnumerable<string> ParseServiceAreaValues(string? serviceArea)
+    {
+        if (string.IsNullOrWhiteSpace(serviceArea))
+            return Array.Empty<string>();
+
+        try
+        {
+            using var document = JsonDocument.Parse(serviceArea);
+            if (document.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                return document.RootElement.EnumerateArray()
+                    .Where(e => e.ValueKind == JsonValueKind.String)
+                    .Select(e => e.GetString()!.Trim())
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .ToList();
+            }
+
+            if (document.RootElement.ValueKind == JsonValueKind.String)
+            {
+                var value = document.RootElement.GetString();
+                return string.IsNullOrWhiteSpace(value)
+                    ? Array.Empty<string>()
+                    : new[] { value.Trim() };
+            }
+        }
+        catch (JsonException)
+        {
+            // not valid JSON, fallback to comma-separated text
+        }
+
+        return serviceArea.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(value => value.Trim())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToList();
+    }
+
+    private static bool IsReportInServiceArea(WasteReport report, IEnumerable<string> serviceAreaTerms)
+    {
+        var terms = serviceAreaTerms.Where(value => !string.IsNullOrWhiteSpace(value)).ToList();
+        if (!terms.Any())
+            return true;
+
+        if (!string.IsNullOrWhiteSpace(report.Address))
+        {
+            return terms.Any(term => report.Address.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return false;
     }
 }
 
