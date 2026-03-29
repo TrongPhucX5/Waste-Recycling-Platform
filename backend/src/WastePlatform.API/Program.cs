@@ -54,6 +54,13 @@ builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IWasteCategoryRepository, WasteCategoryRepository>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
+// 👉 Repositories for Admin Module
+builder.Services.AddScoped<IComplaintRepository, ComplaintRepository>();
+builder.Services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
+
+// 👉 Repositories for Citizen Module (Rewards & Complaints)
+builder.Services.AddScoped<IRewardPointsRepository, RewardPointsRepository>();
+
 // Đăng ký MediatR để xử lý CQRS (Queries/Commands)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));
 
@@ -67,7 +74,36 @@ builder.Services.AddCors(options =>
 // ── Controllers & Swagger ─────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(
+    options =>
+    {
+        // Thêm mô tả cho JWT Authentication
+        options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            Description = "Nhập 'Bearer' theo sau là token JWT của bạn."
+        });
+
+        options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+        {
+            {
+                new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                    {
+                        Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
+    }
+);
 
 var app = builder.Build();
 
@@ -80,6 +116,16 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+else
+{
+    // Enable Swagger in Production for debugging
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.RoutePrefix = "swagger";
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Waste Platform API V1");
+    });
 }
 
 // Explicitly configure static files for the uploads directory

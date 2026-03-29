@@ -42,6 +42,8 @@ public class AuthService
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
+        await EnsureEnterpriseProfileAsync(user);
+
         return BuildResponse(user);
     }
 
@@ -57,7 +59,33 @@ public class AuthService
         if (!user.IsActive)
             throw new UnauthorizedAccessException("Tài khoản đã bị khóa.");
 
+        await EnsureEnterpriseProfileAsync(user);
+
         return BuildResponse(user);
+    }
+
+    private async Task EnsureEnterpriseProfileAsync(User user)
+    {
+        if (user.Role != UserRole.Enterprise)
+            return;
+
+        var hasEnterpriseProfile = await _db.Enterprises.AnyAsync(e => e.UserId == user.Id);
+        if (hasEnterpriseProfile)
+            return;
+
+        var enterprise = new Enterprise
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            CompanyName = user.FullName,
+            ServiceArea = null,
+            CapacityKgPerDay = null,
+            IsVerified = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Enterprises.Add(enterprise);
+        await _db.SaveChangesAsync();
     }
 
     // ── Helper ───────────────────────────────────────────────────────────

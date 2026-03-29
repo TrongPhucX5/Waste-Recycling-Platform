@@ -12,4 +12,9 @@ public class Collector
     public virtual User User { get; set; } = null!;
     public virtual Enterprise Enterprise { get; set; } = null!;
     public virtual ICollection<CollectionTask> CollectionTasks { get; set; } = new List<CollectionTask>();
+
+    public void ToggleAvailability(bool isAvailable)
+    {
+        IsAvailable = isAvailable;
+    }
 }
