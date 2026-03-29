@@ -67,11 +67,10 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
     serviceArea: "HCMC",
   });
 
-  useEffect(() => {
-    const fetchReports = async () => {
-      setLoading(true);
-      setError(null);
-      try {
+  const fetchReports = async () => {
+    setLoading(true);
+    setError(null);
+    try {
         const response = await reportApi.getEnterpriseAvailableReports(1, 10, "Pending");
         const transformedRequests: EnterpriseRequest[] = response.reports.map((report: any) => ({
           reportId: report.id,
@@ -354,8 +353,7 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
             <p className="text-red-700">{error}</p>
           </div>
         )}
-
-        {activeTab === "dashboard" && <EnterpriseOverview capacity={capacity} requests={requests} />}
+        {activeTab === "dashboard" && taskStats && <EnterpriseOverview capacity={capacity} requests={requests} stats={taskStats} />}
 
         {activeTab === "requests" && (
           <RequestManagement
