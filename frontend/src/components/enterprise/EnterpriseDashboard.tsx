@@ -132,8 +132,19 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
       }
     };
 
+  const fetchTaskStats = async () => {
+    try {
+      const statsResponse = await enterpriseTaskApi.getStats();
+      setTaskStats(statsResponse);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
     fetchReports();
     fetchEnterpriseProfile();
+    fetchTaskStats();
   }, []);
 
   const refreshCollectors = async () => {

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Card,
   Button,
@@ -7,7 +7,12 @@ import {
   Select,
   Modal,
 } from "../ui";
-import { enterpriseTaskApi, EnterpriseCollectionTask, EnterpriseCollector } from "../../lib/api/enterpriseTaskApi";
+import {
+  enterpriseTaskApi,
+  EnterpriseCollectionTask,
+  EnterpriseCollector,
+  EnterpriseTaskStats,
+} from "../../lib/api/enterpriseTaskApi";
 import { AlertCircle, MapPin, User, CheckCircle } from "lucide-react";
 
 export const EnterpriseTaskManagement: React.FC = () => {
@@ -20,6 +25,14 @@ export const EnterpriseTaskManagement: React.FC = () => {
   const [selectedCollector, setSelectedCollector] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
+  const [taskStats, setTaskStats] = useState<EnterpriseTaskStats>({
+    totalTasks: 0,
+    totalUnassigned: 0,
+    totalAssigned: 0,
+    totalOnTheWay: 0,
+    totalCollected: 0,
+    totalWeightKg: 0,
+  });
 
   // Fetch tasks and collectors on component mount
   useEffect(() => {
@@ -30,15 +43,17 @@ export const EnterpriseTaskManagement: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [tasksData, collectorsData] = await Promise.all([
+      const [tasksData, collectorsData, statsData] = await Promise.all([
         enterpriseTaskApi.getTasks(
           filterStatus !== "all" ? filterStatus : undefined,
           showUnassignedOnly
         ),
         enterpriseTaskApi.getAvailableCollectors(),
+        enterpriseTaskApi.getStats(),
       ]);
       setTasks(tasksData);
       setCollectors(collectorsData);
+      setTaskStats(statsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch data");
       console.error(err);
@@ -83,6 +98,38 @@ export const EnterpriseTaskManagement: React.FC = () => {
 
   const unassignedCount = tasks.filter((t: EnterpriseCollectionTask) => !t.collectorId).length;
 
+  const mapTasks = tasks.filter(
+    (task) =>
+      task.report.latitude !== null &&
+      task.report.longitude !== null &&
+      !Number.isNaN(task.report.latitude) &&
+      !Number.isNaN(task.report.longitude)
+  );
+
+  const mapUrl = useMemo(() => {
+    if (!mapTasks.length) return "";
+    const centerLat = mapTasks[0].report.latitude;
+    const centerLon = mapTasks[0].report.longitude;
+    const url = new URL("https://staticmap.openstreetmap.de/staticmap.php");
+    url.searchParams.set("center", `${centerLat},${centerLon}`);
+    url.searchParams.set("zoom", "13");
+    url.searchParams.set("size", "900x320");
+    url.searchParams.set("markers", `${centerLat},${centerLon},red-pushpin`);
+    mapTasks.slice(1, 8).forEach((task) => {
+      url.searchParams.append(
+        "markers",
+        `${task.report.latitude},${task.report.longitude},blue-pushpin`
+      );
+    });
+    return url.toString();
+  }, [mapTasks]);
+
+  const mapLink = useMemo(() => {
+    if (!mapTasks.length) return "https://www.openstreetmap.org";
+    const first = mapTasks[0].report;
+    return `https://www.openstreetmap.org/?mlat=${first.latitude}&mlon=${first.longitude}#map=13/${first.latitude}/${first.longitude}`;
+  }, [mapTasks]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -98,6 +145,52 @@ export const EnterpriseTaskManagement: React.FC = () => {
           )}
         </p>
       </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4 bg-white border border-gray-100 shadow-sm">
+          <p className="text-sm text-gray-500 uppercase font-medium">Total Tasks</p>
+          <p className="text-3xl font-bold text-gray-900 mt-3">{taskStats.totalTasks}</p>
+        </Card>
+        <Card className="p-4 bg-white border border-gray-100 shadow-sm">
+          <p className="text-sm text-gray-500 uppercase font-medium">Unassigned</p>
+          <p className="text-3xl font-bold text-red-600 mt-3">{taskStats.totalUnassigned}</p>
+        </Card>
+        <Card className="p-4 bg-white border border-gray-100 shadow-sm">
+          <p className="text-sm text-gray-500 uppercase font-medium">On The Way</p>
+          <p className="text-3xl font-bold text-yellow-700 mt-3">{taskStats.totalOnTheWay}</p>
+        </Card>
+        <Card className="p-4 bg-white border border-gray-100 shadow-sm">
+          <p className="text-sm text-gray-500 uppercase font-medium">Collected</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-3">{taskStats.totalCollected}</p>
+        </Card>
+      </div>
+
+      {mapTasks.length > 0 && (
+        <Card className="p-4 bg-white border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Bản đồ vị trí thu gom</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Hiển thị {mapTasks.length} vị trí thu gom hiện tại. Nhấn vào bản đồ để xem chi tiết.
+              </p>
+            </div>
+            <span className="text-xs uppercase tracking-wide text-gray-400">
+              WRP-113
+            </span>
+          </div>
+          <a href={mapLink} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-gray-200">
+            <img
+              src={mapUrl}
+              alt="Enterprise collection task locations"
+              className="w-full h-[320px] object-cover"
+              loading="lazy"
+            />
+          </a>
+          <p className="text-xs text-gray-500 mt-2">
+            Chỉ hiển thị tối đa 8 vị trí trên bản đồ.
+          </p>
+        </Card>
+      )}
 
       {/* Error Message */}
       {error && (
