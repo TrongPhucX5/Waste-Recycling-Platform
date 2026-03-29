@@ -58,6 +58,9 @@ builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IComplaintRepository, ComplaintRepository>();
 builder.Services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
 
+// 👉 Repositories for Citizen Module (Rewards & Complaints)
+builder.Services.AddScoped<IRewardPointsRepository, RewardPointsRepository>();
+
 // Đăng ký MediatR để xử lý CQRS (Queries/Commands)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));
 
