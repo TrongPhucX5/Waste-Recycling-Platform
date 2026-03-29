@@ -54,6 +54,10 @@ builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IWasteCategoryRepository, WasteCategoryRepository>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
+// 👉 Repositories for Admin Module
+builder.Services.AddScoped<IComplaintRepository, ComplaintRepository>();
+builder.Services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
+
 // Đăng ký MediatR để xử lý CQRS (Queries/Commands)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));
 
