@@ -31,6 +31,7 @@ public class CollectionTask
         if (Status != CollectionTaskStatus.Assigned)
             throw new InvalidOperationException("Task must be Assigned before going OnTheWay");
         Status = CollectionTaskStatus.OnTheWay;
+        StatusLogs.Add(new TaskStatusLog { TaskId = Id, Status = Status });
     }
 
     public void Complete(decimal weightKg, string? notes)
@@ -41,5 +42,6 @@ public class CollectionTask
         CollectedWeightKg = weightKg;
         Notes = notes;
         CompletedAt = DateTime.UtcNow;
+        StatusLogs.Add(new TaskStatusLog { TaskId = Id, Status = Status });
     }
 }
