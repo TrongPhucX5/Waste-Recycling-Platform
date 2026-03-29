@@ -2,7 +2,12 @@
 import { useState, useEffect } from "react";
 import { LayoutDashboard, ClipboardList, Factory, Trophy, CheckSquare } from "lucide-react";
 import { reportApi } from "../../lib/api/reportApi";
-import { enterpriseTaskApi, EnterpriseWasteCategory, EnterpriseProfile } from "../../lib/api/enterpriseTaskApi";
+import {
+  enterpriseTaskApi,
+  EnterpriseWasteCategory,
+  EnterpriseProfile,
+  EnterpriseTaskStats,
+} from "../../lib/api/enterpriseTaskApi";
 import { EnterpriseOverview } from "./EnterpriseOverview";
 import { RequestManagement } from "./RequestManagement";
 import { CapacitySettings } from "./CapacitySettings";
@@ -25,6 +30,14 @@ export const EnterpriseDashboard: React.FC = () => {
   });
   const [categories, setCategories] = useState<EnterpriseWasteCategory[]>([]);
   const [acceptedWasteTypeIds, setAcceptedWasteTypeIds] = useState<number[]>([]);
+  const [taskStats, setTaskStats] = useState<EnterpriseTaskStats>({
+    totalTasks: 0,
+    totalUnassigned: 0,
+    totalAssigned: 0,
+    totalOnTheWay: 0,
+    totalCollected: 0,
+    totalWeightKg: 0,
+  });
 
   // Capacity State for overview card
   const [capacity, setCapacity] = useState({
@@ -39,63 +52,73 @@ export const EnterpriseDashboard: React.FC = () => {
     { type: "Paper", pointsPerKg: 5 },
   ]);
 
+  const fetchReports = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await reportApi.getEnterpriseAvailableReports(1, 10, "Pending");
+      const transformedRequests: EnterpriseRequest[] = response.reports.map((report: any) => ({
+        reportId: report.id,
+        type: report.categoryName || "Unknown",
+        quantity: "N/A",
+        location: report.address || "Unknown",
+        status: report.status || "Pending",
+        date: new Date(report.createdAt).toLocaleDateString("en-CA"),
+        requester: report.citizenName || "Unknown",
+      }));
+      setRequests(transformedRequests);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch reports");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEnterpriseProfile = async () => {
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      const profileResponse = await enterpriseTaskApi.getProfile();
+      const wasteTypesResponse = await enterpriseTaskApi.getWasteTypes();
+
+      setEnterpriseProfile({
+        id: profileResponse.id,
+        companyName: profileResponse.companyName,
+        serviceArea: profileResponse.serviceArea ?? "",
+        capacityKgPerDay: profileResponse.capacityKgPerDay,
+      });
+      setCategories(wasteTypesResponse.allCategories);
+      setAcceptedWasteTypeIds(wasteTypesResponse.acceptedIds);
+
+      setCapacity({
+        wasteTypes: wasteTypesResponse.allCategories
+          .filter((category) => wasteTypesResponse.acceptedIds.includes(category.id))
+          .map((category) => category.name),
+        maxCapacity: profileResponse.capacityKgPerDay ?? 0,
+        serviceArea: profileResponse.serviceArea ?? "",
+      });
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : "Failed to load enterprise profile");
+      console.error(err);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const fetchTaskStats = async () => {
+    try {
+      const statsResponse = await enterpriseTaskApi.getStats();
+      setTaskStats(statsResponse);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    const fetchReports = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await reportApi.getEnterpriseAvailableReports(1, 10, "Pending");
-        const transformedRequests: EnterpriseRequest[] = response.reports.map((report: any) => ({
-          reportId: report.id,
-          type: report.categoryName || "Unknown",
-          quantity: "N/A",
-          location: report.address || "Unknown",
-          status: report.status || "Pending",
-          date: new Date(report.createdAt).toLocaleDateString("en-CA"),
-          requester: report.citizenName || "Unknown",
-        }));
-        setRequests(transformedRequests);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch reports");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchEnterpriseProfile = async () => {
-      setProfileLoading(true);
-      setProfileError(null);
-      try {
-        const profileResponse = await enterpriseTaskApi.getProfile();
-        const wasteTypesResponse = await enterpriseTaskApi.getWasteTypes();
-
-        setEnterpriseProfile({
-          id: profileResponse.id,
-          companyName: profileResponse.companyName,
-          serviceArea: profileResponse.serviceArea ?? "",
-          capacityKgPerDay: profileResponse.capacityKgPerDay,
-        });
-        setCategories(wasteTypesResponse.allCategories);
-        setAcceptedWasteTypeIds(wasteTypesResponse.acceptedIds);
-
-        setCapacity({
-          wasteTypes: wasteTypesResponse.allCategories
-            .filter((category) => wasteTypesResponse.acceptedIds.includes(category.id))
-            .map((category) => category.name),
-          maxCapacity: profileResponse.capacityKgPerDay ?? 0,
-          serviceArea: profileResponse.serviceArea ?? "",
-        });
-      } catch (err) {
-        setProfileError(err instanceof Error ? err.message : "Failed to load enterprise profile");
-        console.error(err);
-      } finally {
-        setProfileLoading(false);
-      }
-    };
-
     fetchReports();
     fetchEnterpriseProfile();
+    fetchTaskStats();
   }, []);
 
   const handleStatusChange = (reportId: string, status: string) => {
@@ -193,7 +216,13 @@ export const EnterpriseDashboard: React.FC = () => {
             <p className="text-red-700">{error}</p>
           </div>
         )}
-        {activeTab === "overview" && <EnterpriseOverview capacity={capacity} requests={requests} />}
+        {activeTab === "overview" && (
+          <EnterpriseOverview
+            capacity={capacity}
+            requests={requests}
+            stats={taskStats}
+          />
+        )}
         {activeTab === "requests" && (
             <RequestManagement 
                 requests={requests} 
