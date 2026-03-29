@@ -1,17 +1,46 @@
 "use client";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, ClipboardList, Factory, Trophy, CheckSquare } from "lucide-react";
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Factory,
+  Trophy,
+  CheckSquare,
+  Users,
+  ChartColumnBig,
+  Settings,
+} from "lucide-react";
 import { reportApi } from "../../lib/api/reportApi";
-import { enterpriseTaskApi, EnterpriseWasteCategory, EnterpriseProfile } from "../../lib/api/enterpriseTaskApi";
+import {
+  enterpriseTaskApi,
+  EnterpriseCollector,
+  EnterpriseProfile,
+  EnterpriseTaskStats,
+  EnterpriseWasteCategory,
+} from "../../lib/api/enterpriseTaskApi";
+import {
+  enterpriseRewardApi,
+  EnterpriseRewardRule,
+  UpdateEnterpriseRewardRuleItem,
+} from "../../lib/api/enterpriseRewardApi";
+import { useAuth } from "@/contexts/AuthContext";
 import { EnterpriseOverview } from "./EnterpriseOverview";
 import { RequestManagement } from "./RequestManagement";
 import { CapacitySettings } from "./CapacitySettings";
 import { RewardConfiguration } from "./RewardConfiguration";
 import { EnterpriseTaskManagement } from "./EnterpriseTaskManagement";
+import { CollectorsManagement } from "./CollectorsManagement";
+import { ReportsAnalytics } from "./ReportsAnalytics";
+import { ProfileSettings } from "./ProfileSettings";
 import { EnterpriseRequest } from "./types";
 
-export const EnterpriseDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("overview");
+interface EnterpriseDashboardProps {
+  initialTab?: string;
+}
+
+export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initialTab = "dashboard" }) => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [requests, setRequests] = useState<EnterpriseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +54,11 @@ export const EnterpriseDashboard: React.FC = () => {
   });
   const [categories, setCategories] = useState<EnterpriseWasteCategory[]>([]);
   const [acceptedWasteTypeIds, setAcceptedWasteTypeIds] = useState<number[]>([]);
+  const [collectors, setCollectors] = useState<EnterpriseCollector[]>([]);
+  const [taskStats, setTaskStats] = useState<EnterpriseTaskStats | null>(null);
+  const [rewardRules, setRewardRules] = useState<EnterpriseRewardRule[]>([]);
+  const [rewardLoading, setRewardLoading] = useState(true);
+  const [rewardError, setRewardError] = useState<string | null>(null);
 
   // Capacity State for overview card
   const [capacity, setCapacity] = useState({
@@ -32,12 +66,6 @@ export const EnterpriseDashboard: React.FC = () => {
     maxCapacity: 5000,
     serviceArea: "HCMC",
   });
-
-  // Reward Rules State
-  const [rewardRules, setRewardRules] = useState([
-    { type: "Plastic", pointsPerKg: 10 },
-    { type: "Paper", pointsPerKg: 5 },
-  ]);
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -50,7 +78,7 @@ export const EnterpriseDashboard: React.FC = () => {
           type: report.categoryName || "Unknown",
           quantity: "N/A",
           location: report.address || "Unknown",
-          status: report.status || "Pending",
+          status: (report.status || "Pending").toUpperCase(),
           date: new Date(report.createdAt).toLocaleDateString("en-CA"),
           requester: report.citizenName || "Unknown",
         }));
@@ -67,8 +95,13 @@ export const EnterpriseDashboard: React.FC = () => {
       setProfileLoading(true);
       setProfileError(null);
       try {
-        const profileResponse = await enterpriseTaskApi.getProfile();
-        const wasteTypesResponse = await enterpriseTaskApi.getWasteTypes();
+        const [profileResponse, wasteTypesResponse, rewardRulesResponse, statsResponse, collectorsResponse] = await Promise.all([
+          enterpriseTaskApi.getProfile(),
+          enterpriseTaskApi.getWasteTypes(),
+          enterpriseRewardApi.getRewardRules(),
+          enterpriseTaskApi.getStats(),
+          enterpriseTaskApi.getAvailableCollectors(),
+        ]);
 
         setEnterpriseProfile({
           id: profileResponse.id,
@@ -86,17 +119,40 @@ export const EnterpriseDashboard: React.FC = () => {
           maxCapacity: profileResponse.capacityKgPerDay ?? 0,
           serviceArea: profileResponse.serviceArea ?? "",
         });
+
+        setRewardRules(rewardRulesResponse);
+        setTaskStats(statsResponse);
+        setCollectors(collectorsResponse);
       } catch (err) {
         setProfileError(err instanceof Error ? err.message : "Failed to load enterprise profile");
         console.error(err);
       } finally {
         setProfileLoading(false);
+        setRewardLoading(false);
       }
     };
 
     fetchReports();
     fetchEnterpriseProfile();
   }, []);
+
+  const refreshCollectors = async () => {
+    try {
+      const latestCollectors = await enterpriseTaskApi.getAvailableCollectors();
+      setCollectors(latestCollectors);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const refreshStats = async () => {
+    try {
+      const stats = await enterpriseTaskApi.getStats();
+      setTaskStats(stats);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleStatusChange = (reportId: string, status: string) => {
     setRequests((prev) => prev.map((req) => (req.reportId === reportId ? { ...req, status } : req)));
@@ -105,6 +161,8 @@ export const EnterpriseDashboard: React.FC = () => {
   const handleAssign = (reportId: string, collectorId: string) => {
     handleStatusChange(reportId, "Assigned");
     alert(`Task assigned to collector ${collectorId}`);
+    refreshStats();
+    refreshCollectors();
   };
 
   const handleSaveCapacity = async (payload: {
@@ -144,64 +202,169 @@ export const EnterpriseDashboard: React.FC = () => {
     }
   };
 
+  const handleSaveRewardRules = async (rules: UpdateEnterpriseRewardRuleItem[]) => {
+    setRewardLoading(true);
+    setRewardError(null);
+
+    try {
+      await enterpriseRewardApi.updateRewardRules(rules);
+      const latestRules = await enterpriseRewardApi.getRewardRules();
+      setRewardRules(latestRules);
+      alert("Reward rules updated successfully.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update reward rules";
+      setRewardError(message);
+      console.error(err);
+      alert(message);
+    } finally {
+      setRewardLoading(false);
+    }
+  };
+
   const tabs = [
-    { id: "overview", label: "Overview", icon: LayoutDashboard },
-    { id: "requests", label: "Requests", icon: ClipboardList },
-    { id: "tasks", label: "Task Assignment", icon: CheckSquare },
-    { id: "capacity", label: "Capacity", icon: Factory },
-    { id: "rewards", label: "Rewards", icon: Trophy },
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      description: "Overview of requests, capacity, and operations",
+    },
+    {
+      id: "requests",
+      label: "Collection Requests",
+      icon: ClipboardList,
+      description: "Review and approve incoming waste reports",
+    },
+    {
+      id: "tasks",
+      label: "Assign Tasks",
+      icon: CheckSquare,
+      description: "Assign approved requests to collectors",
+    },
+    {
+      id: "collectors",
+      label: "Collectors",
+      icon: Users,
+      description: "Monitor collector availability and workload",
+    },
+    {
+      id: "capacity",
+      label: "Capacity Management",
+      icon: Factory,
+      description: "Configure service area, categories, and capacity",
+    },
+    {
+      id: "analytics",
+      label: "Reports & Analytics",
+      icon: ChartColumnBig,
+      description: "Track performance by type, area, and task status",
+    },
+    {
+      id: "rewards",
+      label: "Reward Rules",
+      icon: Trophy,
+      description: "Set points and quality bonus by waste category",
+    },
+    {
+      id: "settings",
+      label: "Profile / Settings",
+      icon: Settings,
+      description: "Enterprise profile and account controls",
+    },
   ];
 
+  const activeConfig = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
+
   return (
-    <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-100 bg-gray-50/50">
-        <nav className="flex space-x-8 px-6" aria-label="Tabs">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
+      <aside className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:sticky lg:top-4 lg:h-fit">
+        <div className="mb-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 p-4 text-white">
+          <p className="text-xs uppercase tracking-wide text-emerald-100">Recycling Enterprise</p>
+          <p className="mt-1 text-lg font-semibold">{enterpriseProfile.companyName || user?.fullName || "Enterprise"}</p>
+          <p className="text-xs text-emerald-100">Operations Center</p>
+        </div>
+
+        <nav className="space-y-1" aria-label="Enterprise Sections">
           {tabs.map((tab) => {
             const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+            const isActive = tab.id === activeTab;
+
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`
-                  whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors
-                  ${
-                    isActive
-                      ? "border-emerald-500 text-emerald-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }
-                `}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
+                  isActive
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
               >
-                <Icon size={18} className={isActive ? "text-emerald-500" : "text-gray-400"} />
-                {tab.label}
+                <Icon size={18} className={isActive ? "text-emerald-600" : "text-gray-400"} />
+                <span className="font-medium">{tab.label}</span>
               </button>
             );
           })}
         </nav>
-      </div>
+      </aside>
 
-      {/* Tab Content */}
-      <div className="p-6 md:p-8">
+      <section className="space-y-6">
+        <header className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">{activeConfig.label}</h2>
+              <p className="mt-1 text-sm text-gray-600">{activeConfig.description}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="rounded-lg bg-gray-50 px-3 py-2 text-center">
+                <p className="text-xs text-gray-500">Pending</p>
+                <p className="text-lg font-semibold text-amber-600">
+                  {requests.filter((request) => request.status === "PENDING").length}
+                </p>
+              </div>
+              <div className="rounded-lg bg-gray-50 px-3 py-2 text-center">
+                <p className="text-xs text-gray-500">Collectors</p>
+                <p className="text-lg font-semibold text-sky-700">{collectors.length}</p>
+              </div>
+              <div className="rounded-lg bg-gray-50 px-3 py-2 text-center col-span-2 sm:col-span-1">
+                <p className="text-xs text-gray-500">Collected</p>
+                <p className="text-lg font-semibold text-emerald-700">{taskStats?.totalCollected ?? 0}</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
         {loading && activeTab === "requests" && (
           <div className="text-center py-8">
             <p className="text-gray-600">Loading reports...</p>
           </div>
         )}
+
         {error && activeTab === "requests" && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-red-700">{error}</p>
           </div>
         )}
-        {activeTab === "overview" && <EnterpriseOverview capacity={capacity} requests={requests} />}
+
+        {activeTab === "dashboard" && <EnterpriseOverview capacity={capacity} requests={requests} />}
+
         {activeTab === "requests" && (
-            <RequestManagement 
-                requests={requests} 
-                onStatusChange={handleStatusChange} 
-                onAssign={handleAssign}
-            />
+          <RequestManagement
+            requests={requests}
+            onStatusChange={handleStatusChange}
+            onAssign={handleAssign}
+          />
         )}
+
         {activeTab === "tasks" && <EnterpriseTaskManagement />}
+
+        {activeTab === "collectors" && (
+          <CollectorsManagement
+            collectors={collectors}
+            loading={profileLoading}
+            error={profileError}
+            onRefresh={refreshCollectors}
+          />
+        )}
+
         {activeTab === "capacity" && (
           <CapacitySettings
             profile={enterpriseProfile}
@@ -212,8 +375,31 @@ export const EnterpriseDashboard: React.FC = () => {
             error={profileError}
           />
         )}
-        {activeTab === "rewards" && <RewardConfiguration initialRules={rewardRules} />}
-      </div>
+
+        {activeTab === "analytics" && (
+          <ReportsAnalytics
+            requests={requests}
+            taskStats={taskStats}
+          />
+        )}
+
+        {activeTab === "rewards" && (
+          <RewardConfiguration
+            categories={categories}
+            existingRules={rewardRules}
+            onSave={handleSaveRewardRules}
+            saving={rewardLoading}
+            error={rewardError}
+          />
+        )}
+
+        {activeTab === "settings" && (
+          <ProfileSettings
+            profile={enterpriseProfile}
+            email={user?.email ?? ""}
+          />
+        )}
+      </section>
     </div>
   );
 };
