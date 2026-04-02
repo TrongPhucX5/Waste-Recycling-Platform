@@ -212,10 +212,10 @@ export const EnterpriseTaskManagement: React.FC = () => {
             </label>
             <Select
               options={[
-                { value: "all", label: "All Statuses" },
-                { value: "Assigned", label: "Assigned" },
-                { value: "OnTheWay", label: "On the Way" },
-                { value: "Collected", label: "Collected" },
+                { value: "all", label: "Tất cả trạng thái (All)" },
+                { value: "Assigned", label: "Đã gán (Assigned)" },
+                { value: "OnTheWay", label: "Trên đường (On the Way)" },
+                { value: "Collected", label: "Hoàn thành (Collected)" },
               ]}
               value={filterStatus}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)}
@@ -231,7 +231,7 @@ export const EnterpriseTaskManagement: React.FC = () => {
                 className="w-4 h-4 rounded border-gray-300"
               />
               <span className="text-sm font-medium text-gray-700">
-                Show Unassigned Only
+                Chỉ hiển thị chưa được gán (Unassigned Only)
               </span>
             </label>
           </div>
@@ -240,135 +240,115 @@ export const EnterpriseTaskManagement: React.FC = () => {
             <Button
               onClick={fetchData}
               disabled={loading}
-              className="w-full"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {loading ? "Loading..." : "Refresh"}
+              {loading ? "Đang tải dữ liệu..." : "Tải lại dữ liệu (Refresh)"}
             </Button>
           </div>
+        </div>
+        <div className="mt-4 p-3 bg-blue-50 text-blue-800 text-sm rounded-lg border border-blue-100 flex items-center justify-between">
+            <p>💡 <b>Lưu ý:</b> Nút <strong>Gán Nhiệm Vụ (Assign)</strong> được gắn ở từng công việc trong danh sách phía bên dưới.</p>
         </div>
       </Card>
 
       {/* Tasks List */}
-      <Card className="p-6 overflow-x-auto">
+      <Card className="overflow-hidden mt-4">
+        <div className="border-b border-gray-100 px-6 py-4">
+          <h4 className="font-semibold text-gray-900">Collection Tasks Directory</h4>
+        </div>
+
         {tasks.length === 0 ? (
-          <div className="text-center py-8">
+          <div className="px-6 py-10 text-center text-sm text-gray-500">
             <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-600">No tasks found</p>
+            <p>No tasks found</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {tasks.map((task: EnterpriseCollectionTask) => (
-              <div
-                key={task.id}
-                className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition"
-              >
-                {/* Task Header */}
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1">
-                      Task {task.id.substring(0, 8)}...
-                    </h3>
-                    <div className="flex gap-2 flex-wrap">
-                      <Badge className={getStatusColor(task.status)}>
-                        {task.status}
-                      </Badge>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-6 py-3">Task Details</th>
+                  <th className="px-6 py-3">Location & Contact</th>
+                  <th className="px-6 py-3">Collector</th>
+                  <th className="px-6 py-3">Status & Data</th>
+                  <th className="px-6 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white text-sm">
+                {tasks.map((task: EnterpriseCollectionTask) => (
+                  <tr key={task.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 align-top">
+                      <p className="font-semibold text-gray-900">Task {task.id.substring(0, 8)}</p>
+                      <p className="text-xs text-gray-500 mt-1">Date: {new Date(task.assignedAt).toLocaleDateString()}</p>
                       {task.report.categoryName && (
-                        <Badge className="bg-purple-100 text-purple-800">
-                          {task.report.categoryName}
+                        <div className="mt-2">
+                          <Badge className="bg-purple-100 text-purple-800">{task.report.categoryName}</Badge>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 align-top max-w-xs">
+                      <div className="flex items-start gap-2 mb-2">
+                        <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-gray-900 truncate" title={task.report.address}>{task.report.address}</p>
+                          <p className="text-xs text-gray-500">📍 {task.report.latitude.toFixed(4)}, {task.report.longitude.toFixed(4)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <User className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-gray-900">{task.report.citizenName}</p>
+                          {task.report.citizenPhone && <p className="text-xs text-gray-500">{task.report.citizenPhone}</p>}
+                        </div>
+                      </div>
+                      {task.report.description && (
+                        <p className="text-xs text-gray-600 mt-2 border-t border-gray-100 pt-2 truncate" title={task.report.description}>
+                          Note: {task.report.description}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 align-top">
+                      {task.collectorId ? (
+                        <div>
+                          <p className="font-medium text-blue-700 flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" /> {task.collectorName}
+                          </p>
+                          {task.collectorPhone && <p className="text-xs text-gray-500">{task.collectorPhone}</p>}
+                        </div>
+                      ) : (
+                        <Badge className="bg-red-100 text-red-800">Unassigned</Badge>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 align-top">
+                      <div className="flex flex-col gap-2 items-start">
+                        <Badge className={getStatusColor(task.status)}>
+                          {task.status}
                         </Badge>
+                        {task.status.toLowerCase() === "collected" && task.collectedWeightKg && (
+                          <div className="text-xs text-green-700 font-medium bg-green-50 px-2 py-1 rounded inline-block border border-green-200">
+                            Weight: {task.collectedWeightKg} kg
+                            {task.notes && <p className="text-green-600 truncate max-w-[120px]" title={task.notes}>{task.notes}</p>}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 align-top">
+                      {!task.collectorId && task.status.toLowerCase() === "assigned" ? (
+                        <Button
+                          onClick={() => handleAssignClick(task)}
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          Assign
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">No actions</span>
                       )}
-                      {!task.collectorId && (
-                        <Badge className="bg-red-100 text-red-800">
-                          Unassigned
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {new Date(task.assignedAt).toLocaleDateString()}
-                  </span>
-                </div>
-
-                {/* Report Details */}
-                <div className="bg-gray-50 rounded p-3 mb-3 space-y-2 text-sm">
-                  <div className="flex gap-2 items-start">
-                    <MapPin className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {task.report.address}
-                      </p>
-                      <p className="text-gray-600">
-                        📍 {task.report.latitude.toFixed(6)}, {task.report.longitude.toFixed(6)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 items-start">
-                    <User className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {task.report.citizenName}
-                      </p>
-                      {task.report.citizenPhone && (
-                        <p className="text-gray-600">{task.report.citizenPhone}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {task.report.description && (
-                    <div className="text-gray-700 border-t border-gray-200 pt-2 mt-2">
-                      <p className="font-medium mb-1">Description:</p>
-                      <p>{task.report.description}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Collector Assignment Info */}
-                {task.collectorId ? (
-                  <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3 text-sm">
-                    <p className="font-medium text-blue-900 flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4" />
-                      Assigned Collector
-                    </p>
-                    <p className="text-blue-800 mt-1">{task.collectorName}</p>
-                    {task.collectorPhone && (
-                      <p className="text-blue-700">{task.collectorPhone}</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-3 text-sm">
-                    <p className="font-medium text-amber-900 flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4" />
-                      No collector assigned
-                    </p>
-                  </div>
-                )}
-
-                {/* Collection Data (if completed) */}
-                {task.status === "Collected" && task.collectedWeightKg && (
-                  <div className="bg-green-50 border border-green-200 rounded p-3 mb-3 text-sm">
-                    <p className="font-medium text-green-900">Collection Completed</p>
-                    <p className="text-green-800 mt-1">
-                      Weight: {task.collectedWeightKg} kg
-                    </p>
-                    {task.notes && (
-                      <p className="text-green-700 mt-1">Notes: {task.notes}</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Action Button */}
-                {!task.collectorId && task.status === "Assigned" && (
-                  <Button
-                    onClick={() => handleAssignClick(task)}
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    Assign Collector
-                  </Button>
-                )}
-              </div>
-            ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </Card>

@@ -193,6 +193,27 @@ VALUES (
     NOW()
 );
 
+-- 5. SAMPLE COLLECTION TASKS
+-- Assign to Enterprise 1 (Green Life) but no collector assigned yet so we can test the Assign button!
+INSERT INTO collection_tasks (id, report_id, enterprise_id, collector_id, status, assigned_at)
+VALUES 
+(
+    '11111111-1111-1111-1111-111111111111', 
+    (SELECT id FROM waste_reports WHERE description = 'Rác thải nhựa gần cửa hàng tiện lợi' LIMIT 1), 
+    'ee1ee1ee-1ee1-1ee1-1ee1-1ee1ee1ee1ee', 
+    NULL, 
+    'assigned', 
+    NOW()
+),
+(
+    '22222222-2222-2222-2222-222222222222', 
+    (SELECT id FROM waste_reports WHERE description = 'Túi rác thực phẩm bốc mùi' LIMIT 1), 
+    'ee1ee1ee-1ee1-1ee1-1ee1-1ee1ee1ee1ee', 
+    NULL, 
+    'assigned', 
+    NOW()
+);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 SELECT 'Comprehensive sample data (V6) seeded successfully!' as status;
