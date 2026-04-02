@@ -177,22 +177,18 @@ public class ReportController : ControllerBase
         }
     }
 
-    /// <summary>Chấp nhận báo cáo và tạo nhiệm vụ thu gom (Enterprise)</summary>
+    /// <summary>Chấp nhận báo cáo và tạo nhiệm vụ thu gom (Admin/Enterprise)</summary>
     [HttpPost("{id}/accept")]
-    [Authorize(Roles = "Enterprise")]
+    [Authorize(Roles = "Admin,Enterprise")]
     public async Task<IActionResult> AcceptReportAndCreateTask(Guid id)
     {
         try
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            var roleClaim = User.FindFirst(ClaimTypes.Role);
+            
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
                 return Unauthorized(new { message = "Invalid or missing user ID" });
-
-            // Get enterprise for current user
-            var enterprise = await _context.Enterprises
-                .FirstOrDefaultAsync(e => e.UserId == userId);
-            if (enterprise == null)
-                return Unauthorized(new { message = "Enterprise not found for current user" });
 
             // Get the report
             var report = await _context.WasteReports.FindAsync(id);
@@ -203,40 +199,53 @@ public class ReportController : ControllerBase
             if (report.Status != ReportStatus.Pending)
                 return BadRequest(new { message = $"Report can only be accepted if it is in Pending status. Current status: {report.Status}" });
 
-            // Ensure enterprise accepts this waste category
-            var acceptedWasteCategoryIds = await _context.EnterpriseWasteTypes
-                .Where(ewt => ewt.EnterpriseId == enterprise.Id)
-                .Select(ewt => ewt.WasteCategoryId)
-                .ToListAsync();
-
-            if (!report.WasteCategoryId.HasValue || !acceptedWasteCategoryIds.Contains(report.WasteCategoryId.Value))
-            {
-                return BadRequest(new { message = "This report's waste category is not handled by your enterprise." });
-            }
-
-            // Ensure report is within enterprise service area
-            var serviceAreaTerms = ParseServiceAreaValues(enterprise.ServiceArea);
-            if (!IsReportInServiceArea(report, serviceAreaTerms))
-            {
-                return BadRequest(new { message = "This report is outside your enterprise service area." });
-            }
-
             // Update report status to Accepted
             report.Accept();
+            
+            // Xử lý riêng cho Role Enterprise
+            if (roleClaim != null && roleClaim.Value == "Enterprise")
+            {
+                var enterprise = await _context.Enterprises.FirstOrDefaultAsync(e => e.UserId == userId);
+                if (enterprise == null)
+                    return Unauthorized(new { message = "Enterprise not found for current user" });
 
-            // Create a collection task
-            var collectionTask = CollectionTask.Create(id, enterprise.Id);
+                var acceptedWasteCategoryIds = await _context.EnterpriseWasteTypes
+                    .Where(ewt => ewt.EnterpriseId == enterprise.Id)
+                    .Select(ewt => ewt.WasteCategoryId)
+                    .ToListAsync();
 
-            // Save both changes atomically
-            _context.CollectionTasks.Add(collectionTask);
+                if (!report.WasteCategoryId.HasValue || !acceptedWasteCategoryIds.Contains(report.WasteCategoryId.Value))
+                    return BadRequest(new { message = "This report's waste category is not handled by your enterprise." });
+
+                var serviceAreaTerms = ParseServiceAreaValues(enterprise.ServiceArea);
+                if (!IsReportInServiceArea(report, serviceAreaTerms))
+                    return BadRequest(new { message = "This report is outside your enterprise service area." });
+
+                // Create a collection task cho Enterprise
+                var collectionTask = CollectionTask.Create(id, enterprise.Id);
+                _context.CollectionTasks.Add(collectionTask);
+            }
+            else if (roleClaim != null && roleClaim.Value == "Admin")
+            {
+                // Nếu là Admin, chỉ đổi trạng thái báo cáo sang Accepted, không cần gán Enterprise ngay lập tức
+                // Admin có thể gán thủ công ở một API khác, hoặc tính năng khác
+
+                // DÀNH CHO ADMIN TEST: Tự động lấy Đại 1 Enterprise trong DB để gán Task
+                var firstEnterprise = await _context.Enterprises.FirstOrDefaultAsync();
+                if (firstEnterprise != null)
+                {
+                    var collectionTask = CollectionTask.Create(id, firstEnterprise.Id);
+                    _context.CollectionTasks.Add(collectionTask);
+                }
+            }
+
             _context.WasteReports.Update(report);
             await _context.SaveChangesAsync();
 
             return Ok(new
             {
-                message = "Report accepted and collection task created successfully",
+                message = "Report accepted successfully",
                 reportId = id,
-                collectionTaskId = collectionTask.Id,
                 reportStatus = report.Status.ToString()
             });
         }
@@ -250,9 +259,9 @@ public class ReportController : ControllerBase
         }
     }
 
-    /// <summary>Từ chối báo cáo (Enterprise)</summary>
+    /// <summary>Từ chối báo cáo (Admin/Enterprise)</summary>
     [HttpPost("{id}/reject")]
-    [Authorize(Roles = "Enterprise")]
+    [Authorize(Roles = "Admin,Enterprise")]
     public async Task<IActionResult> RejectReport(Guid id, [FromBody] RejectReportRequest request)
     {
         try
@@ -273,7 +282,9 @@ public class ReportController : ControllerBase
             // Update report status to Rejected
             report.Reject();
 
-            // Save the changes
+            // Lưu lý do từ chối (nếu bảng WasteReports của ông có chỗ lưu, hoặc chỉ cần trả về log)
+            // Tạm thời chỉ đổi status.
+
             _context.WasteReports.Update(report);
             await _context.SaveChangesAsync();
 

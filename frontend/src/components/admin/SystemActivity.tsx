@@ -6,7 +6,6 @@ import {
   FileText,
   AlertTriangle,
   BarChart3,
-  Activity,
   CheckCircle,
   Clock,
   Zap,
@@ -24,93 +23,55 @@ import {
   Cell,
 } from "recharts";
 
-const COLORS = ["#0AA468", "#F59E0B", "#3B82F6"];
+const COLORS = ["#0AA468", "#F59E0B", "#3B82F6", "#8B5CF6"];
 
-// 🟢 MOCK DATA
-const MOCK_DATA = {
-  totalUsers: 3456,
-  totalReports: 1247,
-  pendingComplaints: 45,
-  totalWasteWeight: 52840,
-  completedReports: 892,
-  activeCollectors: 234,
-  acceptedReports: 643,
-  monthlyTraffic: [
-    { month: "T1", count: 120, userCount: 340 },
-    { month: "T2", count: 145, userCount: 380 },
-    { month: "T3", count: 130, userCount: 360 },
-    { month: "T4", count: 165, userCount: 420 },
-    { month: "T5", count: 180, userCount: 450 },
-    { month: "T6", count: 150, userCount: 400 },
-    { month: "T7", count: 200, userCount: 480 },
-  ],
-  userDistribution: [
-    { role: "citizen", count: 2100 },
-    { role: "collector", count: 890 },
-    { role: "enterprise", count: 466 },
-  ],
-  recentLogs: [
-    {
-      user: "Nguyễn Văn A",
-      action: "Tạo báo cáo mới #R-1247",
-      time: "2 phút",
-      type: "report",
-    },
-    {
-      user: "Trần Thị B",
-      action: "Cập nhật trạng thái task #T-892",
-      time: "5 phút",
-      type: "report",
-    },
-    {
-      user: "Lê Văn C",
-      action: "Khiếu nại báo cáo #R-1240",
-      time: "15 phút",
-      type: "warning",
-    },
-    {
-      user: "Admin",
-      action: "Phê duyệt doanh nghiệp mới",
-      time: "1 giờ",
-      type: "info",
-    },
-  ],
-};
-
+// Định nghĩa kiểu dữ liệu khớp chính xác với C# DTO
 interface DashboardStats {
   totalUsers: number;
   totalReports: number;
   pendingComplaints: number;
   totalWasteWeight: number;
-  completedReports?: number;
-  activeCollectors?: number;
-  acceptedReports?: number;
-  monthlyTraffic?: { month: string; count: number; userCount?: number }[];
-  userDistribution?: { role: string; count: number }[];
-  recentLogs?: { user: string; action: string; time: string; type: string }[];
+  completedReports: number;
+  activeCollectors: number;
+  acceptedReports: number;
+  monthlyTraffic: { month: string; count: number }[];
+  userDistribution: { name: string; value: number }[];
+  recentLogs: { user: string; action: string; time: string; type: string }[];
 }
 
 interface StatItemConfig {
   title: string;
   value: string;
-  icon: React.ReactNode; // ✅ FIX: Change to React.ReactNode
+  icon: React.ReactNode;
   color: string;
 }
 
+// Dữ liệu mặc định (trống) trong lúc chờ gọi API
+const DEFAULT_DATA: DashboardStats = {
+  totalUsers: 0,
+  totalReports: 0,
+  pendingComplaints: 0,
+  totalWasteWeight: 0,
+  completedReports: 0,
+  activeCollectors: 0,
+  acceptedReports: 0,
+  monthlyTraffic: [],
+  userDistribution: [],
+  recentLogs: [],
+};
+
 export const SystemActivity: React.FC = () => {
-  const [data, setData] = useState<DashboardStats>(MOCK_DATA);
+  const [data, setData] = useState<DashboardStats>(DEFAULT_DATA);
   const [error, setError] = useState<string | null>(null);
   const [trafficData, setTrafficData] = useState<any[]>([]);
   const [pieData, setPieData] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Setup mock data immediately
-    setupMockData();
-
-    // Then try to fetch real data
     const fetchStats = async () => {
       try {
+        setLoading(true);
         const response = await fetch("http://localhost:8080/api/admin/users/stats");
 
         if (!response.ok) {
@@ -119,65 +80,39 @@ export const SystemActivity: React.FC = () => {
 
         const json = await response.json();
 
-        if (json.data) {
-          setData(json.data);
-          setupDataFromAPI(json.data);
-          setError(null);
-        }
+        // Check format trả về của bạn (thường bọc trong "data": { ... })
+        const apiData = json.data ? json.data : json; 
+
+        setData(apiData);
+        setupDataFromAPI(apiData);
+        setError(null);
       } catch (err) {
         console.error("API Error:", err);
-        setError("API không khả dụng - dùng dữ liệu demo");
+        setError("Không thể kết nối đến máy chủ. Vui lòng kiểm tra API.");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchStats();
   }, []);
 
-  const setupMockData = () => {
-    const chartData = MOCK_DATA.monthlyTraffic!.map((item) => ({
-      name: item.month,
-      reports: item.count,
-      users: item.userCount || 0,
-    }));
-    setTrafficData(chartData);
-
-    const pieChartData = MOCK_DATA.userDistribution!.map((item) => ({
-      name:
-        item.role === "citizen"
-          ? "Người dân"
-          : item.role === "collector"
-          ? "Người thu gom"
-          : "Doanh nghiệp",
-      value: item.count,
-    }));
-    setPieData(pieChartData);
-
-    setLogs(MOCK_DATA.recentLogs!);
-  };
-
-  const setupDataFromAPI = (apiData: any) => {
+  const setupDataFromAPI = (apiData: DashboardStats) => {
+    // 1. Map dữ liệu LineChart
     if (apiData.monthlyTraffic && apiData.monthlyTraffic.length > 0) {
-      const chartData = apiData.monthlyTraffic.map((item: any) => ({
+      const chartData = apiData.monthlyTraffic.map((item) => ({
         name: item.month,
         reports: item.count,
-        users: item.userCount || 0,
       }));
       setTrafficData(chartData);
     }
 
+    // 2. Map dữ liệu PieChart (C# đã trả về chuẩn name và value)
     if (apiData.userDistribution && apiData.userDistribution.length > 0) {
-      const pieChartData = apiData.userDistribution.map((item: any) => ({
-        name:
-          item.role === "citizen"
-            ? "Người dân"
-            : item.role === "collector"
-            ? "Người thu gom"
-            : "Doanh nghiệp",
-        value: item.count,
-      }));
-      setPieData(pieChartData);
+      setPieData(apiData.userDistribution);
     }
 
+    // 3. Map dữ liệu Logs
     if (apiData.recentLogs && apiData.recentLogs.length > 0) {
       setLogs(apiData.recentLogs);
     }
@@ -215,41 +150,31 @@ export const SystemActivity: React.FC = () => {
   const secondaryStats: StatItemConfig[] = [
     {
       title: "Báo cáo hoàn thành",
-      value: data.completedReports?.toLocaleString() || "0",
+      value: data.completedReports.toLocaleString(),
       icon: <CheckCircle size={24} className="text-white" />,
       color: "bg-emerald-500",
     },
     {
       title: "Báo cáo chấp nhận",
-      value: data.acceptedReports?.toLocaleString() || "0",
+      value: data.acceptedReports.toLocaleString(),
       icon: <Zap size={24} className="text-white" />,
       color: "bg-purple-500",
     },
     {
       title: "Thu gom hoạt động",
-      value: data.activeCollectors?.toLocaleString() || "0",
+      value: data.activeCollectors.toLocaleString(),
       icon: <TrendingUp size={24} className="text-white" />,
       color: "bg-indigo-500",
     },
     {
       title: "Khiếu nại đang xử lý",
-      value: data.pendingComplaints?.toLocaleString() || "0",
+      value: data.pendingComplaints.toLocaleString(), // Dùng tạm, nếu C# có pending xử lý riêng thì map lại
       icon: <AlertTriangle size={24} className="text-white" />,
       color: "bg-red-500",
     },
   ];
 
-  const StatCard = ({
-    icon,
-    title,
-    value,
-    color,
-  }: {
-    icon: React.ReactNode;
-    title: string;
-    value: string;
-    color: string;
-  }) => (
+  const StatCard = ({ icon, title, value, color }: StatItemConfig) => (
     <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all">
       <div className="flex items-center justify-between mb-4">
         <div className={`w-12 h-12 ${color} rounded-lg flex items-center justify-center`}>
@@ -275,35 +200,22 @@ export const SystemActivity: React.FC = () => {
           <p className="text-sm text-gray-600 font-medium">
             Cập nhật: {new Date().toLocaleTimeString("vi-VN")}
           </p>
-          {error && (
-            <p className="text-xs text-amber-600 mt-1">ℹ️ {error}</p>
-          )}
+          {loading && <p className="text-xs text-blue-600 mt-1">Đang tải dữ liệu...</p>}
+          {error && <p className="text-xs text-red-600 mt-1">⚠️ {error}</p>}
         </div>
       </div>
 
       {/* Primary Stats (Hàng 1) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {primaryStats.map((stat, idx) => (
-          <StatCard
-            key={idx}
-            icon={stat.icon}
-            title={stat.title}
-            value={stat.value}
-            color={stat.color}
-          />
+          <StatCard key={idx} {...stat} />
         ))}
       </div>
 
       {/* Secondary Stats (Hàng 2) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {secondaryStats.map((stat, idx) => (
-          <StatCard
-            key={idx}
-            icon={stat.icon}
-            title={stat.title}
-            value={stat.value}
-            color={stat.color}
-          />
+          <StatCard key={idx} {...stat} />
         ))}
       </div>
 
@@ -313,15 +225,15 @@ export const SystemActivity: React.FC = () => {
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
           <div className="mb-6">
             <h2 className="text-lg font-bold text-gray-900">
-              📊 Lưu Lượng Báo Cáo & Truy Cập
+              📊 Lưu Lượng Báo Cáo
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              Xu hướng báo cáo rác và người dùng (7 tháng)
+              Xu hướng báo cáo rác theo tháng
             </p>
           </div>
 
           <div className="h-80 w-full">
-            {trafficData.length > 0 && (
+            {trafficData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trafficData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -337,14 +249,6 @@ export const SystemActivity: React.FC = () => {
                   />
                   <Line
                     type="monotone"
-                    dataKey="users"
-                    name="Người dùng"
-                    stroke="#3B82F6"
-                    strokeWidth={3}
-                    dot={{ r: 4, fill: "#3B82F6" }}
-                  />
-                  <Line
-                    type="monotone"
                     dataKey="reports"
                     name="Báo cáo"
                     stroke="#0AA468"
@@ -353,6 +257,8 @@ export const SystemActivity: React.FC = () => {
                   />
                 </LineChart>
               </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400">Không có dữ liệu</div>
             )}
           </div>
         </div>
@@ -365,7 +271,7 @@ export const SystemActivity: React.FC = () => {
           </div>
 
           <div className="h-64 w-full">
-            {pieData.length > 0 && (
+            {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -385,6 +291,8 @@ export const SystemActivity: React.FC = () => {
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400">Không có dữ liệu</div>
             )}
           </div>
 

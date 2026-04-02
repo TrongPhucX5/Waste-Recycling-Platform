@@ -11,7 +11,7 @@ namespace WastePlatform.API.Controllers;
 
 [ApiController]
 [Route("api/enterprise/tasks")]
-[Authorize(Roles = "Enterprise")]
+[Authorize(Roles = "Admin,Enterprise")] // Đã sửa để cho phép cả Admin
 public class EnterpriseTaskController : ControllerBase
 {
     private readonly WastePlatformDbContext _context;
@@ -34,13 +34,20 @@ public class EnterpriseTaskController : ControllerBase
 
     /// <summary>
     /// Lấy danh sách nhiệm vụ thu gom của Enterprise (có thể chưa gán Collector)
+    /// Admin có thể xem tất cả
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetTasks([FromQuery] CollectionTaskStatus? status = null, [FromQuery] bool? unassigned = null)
     {
-        var enterprise = await GetCurrentEnterpriseAsync();
-        if (enterprise == null)
-            return Unauthorized(new { message = "Enterprise profile not found for current user." });
+        bool isAdmin = User.IsInRole("Admin");
+        Enterprise? enterprise = null;
+
+        if (!isAdmin)
+        {
+            enterprise = await GetCurrentEnterpriseAsync();
+            if (enterprise == null)
+                return Unauthorized(new { message = "Enterprise profile not found for current user." });
+        }
 
         var query = _context.CollectionTasks
             .Include(t => t.WasteReport)
@@ -50,7 +57,13 @@ public class EnterpriseTaskController : ControllerBase
             .Include(t => t.Collector!)
                 .ThenInclude(c => c.User)
             .Include(t => t.Images)
-            .Where(t => t.EnterpriseId == enterprise.Id);
+            .AsQueryable();
+
+        // Nếu KHÔNG phải Admin thì chỉ lấy task của Enterprise đó
+        if (!isAdmin && enterprise != null)
+        {
+            query = query.Where(t => t.EnterpriseId == enterprise.Id);
+        }
 
         // Filter by unassigned status if requested
         if (unassigned == true)
@@ -103,25 +116,39 @@ public class EnterpriseTaskController : ControllerBase
     [HttpPut("{id}/assign-collector")]
     public async Task<IActionResult> AssignCollector(Guid id, [FromBody] AssignCollectorRequest request)
     {
-        var enterprise = await GetCurrentEnterpriseAsync();
-        if (enterprise == null)
-            return Unauthorized(new { message = "Enterprise profile not found." });
+        bool isAdmin = User.IsInRole("Admin");
+        Enterprise? enterprise = null;
+
+        if (!isAdmin)
+        {
+            enterprise = await GetCurrentEnterpriseAsync();
+            if (enterprise == null)
+                return Unauthorized(new { message = "Enterprise profile not found." });
+        }
 
         if (request.CollectorId == Guid.Empty)
             return BadRequest(new { message = "CollectorId is required." });
 
-        var task = await _context.CollectionTasks
-            .FirstOrDefaultAsync(t => t.Id == id && t.EnterpriseId == enterprise.Id);
+        var taskQuery = _context.CollectionTasks.Where(t => t.Id == id);
+        if (!isAdmin && enterprise != null)
+        {
+            taskQuery = taskQuery.Where(t => t.EnterpriseId == enterprise.Id);
+        }
 
+        var task = await taskQuery.FirstOrDefaultAsync();
         if (task == null)
-            return NotFound(new { message = "Task not found or does not belong to this enterprise." });
+            return NotFound(new { message = "Task not found or does not belong to your enterprise." });
 
         // Verify collector belongs to this enterprise
-        var collector = await _context.Collectors
-            .FirstOrDefaultAsync(c => c.Id == request.CollectorId && c.EnterpriseId == enterprise.Id);
+        var collectorQuery = _context.Collectors.Where(c => c.Id == request.CollectorId);
+        if (!isAdmin && enterprise != null)
+        {
+            collectorQuery = collectorQuery.Where(c => c.EnterpriseId == enterprise.Id);
+        }
 
+        var collector = await collectorQuery.FirstOrDefaultAsync();
         if (collector == null)
-            return BadRequest(new { message = "Collector not found or does not belong to this enterprise." });
+            return BadRequest(new { message = "Collector not found or does not belong to your enterprise." });
 
         try
         {
@@ -143,17 +170,31 @@ public class EnterpriseTaskController : ControllerBase
 
     /// <summary>
     /// Lấy danh sách Collectors của Enterprise (có thể gán công việc)
+    /// Admin lấy toàn bộ
     /// </summary>
     [HttpGet("collectors")]
     public async Task<IActionResult> GetAvailableCollectors()
     {
-        var enterprise = await GetCurrentEnterpriseAsync();
-        if (enterprise == null)
-            return Unauthorized(new { message = "Enterprise profile not found." });
+        bool isAdmin = User.IsInRole("Admin");
+        Enterprise? enterprise = null;
 
-        var collectors = await _context.Collectors
+        if (!isAdmin)
+        {
+            enterprise = await GetCurrentEnterpriseAsync();
+            if (enterprise == null)
+                return Unauthorized(new { message = "Enterprise profile not found." });
+        }
+
+        var query = _context.Collectors
             .Include(c => c.User)
-            .Where(c => c.EnterpriseId == enterprise.Id)
+            .AsQueryable();
+
+        if (!isAdmin && enterprise != null)
+        {
+            query = query.Where(c => c.EnterpriseId == enterprise.Id);
+        }
+
+        var collectors = await query
             .OrderBy(c => c.User.FullName)
             .Select(c => new
             {
@@ -176,6 +217,10 @@ public class EnterpriseTaskController : ControllerBase
     [HttpGet("profile")]
     public async Task<IActionResult> GetProfile()
     {
+        // Admin không có Profile Enterprise nên sẽ báo lỗi hợp lý
+        if (User.IsInRole("Admin"))
+            return BadRequest(new { message = "Admin users do not have an enterprise profile." });
+
         var enterprise = await GetCurrentEnterpriseAsync();
         if (enterprise == null)
             return Unauthorized(new { message = "Enterprise profile not found." });
@@ -206,6 +251,9 @@ public class EnterpriseTaskController : ControllerBase
     [HttpPut("profile")]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateEnterpriseProfileRequest request)
     {
+        if (User.IsInRole("Admin"))
+            return BadRequest(new { message = "Admin users cannot update enterprise profiles directly here." });
+
         var enterprise = await GetCurrentEnterpriseAsync();
         if (enterprise == null)
             return Unauthorized(new { message = "Enterprise profile not found." });
@@ -231,6 +279,9 @@ public class EnterpriseTaskController : ControllerBase
     [HttpGet("waste-types")]
     public async Task<IActionResult> GetWasteTypes()
     {
+        if (User.IsInRole("Admin"))
+            return BadRequest(new { message = "Admin users do not have enterprise waste types." });
+
         var enterprise = await GetCurrentEnterpriseAsync();
         if (enterprise == null)
             return Unauthorized(new { message = "Enterprise profile not found." });
@@ -262,6 +313,9 @@ public class EnterpriseTaskController : ControllerBase
     [HttpPut("waste-types")]
     public async Task<IActionResult> UpdateWasteTypes([FromBody] UpdateEnterpriseWasteTypesRequest request)
     {
+        if (User.IsInRole("Admin"))
+            return BadRequest(new { message = "Admin users cannot update waste types." });
+
         var enterprise = await GetCurrentEnterpriseAsync();
         if (enterprise == null)
             return Unauthorized(new { message = "Enterprise profile not found." });
@@ -351,18 +405,29 @@ public class EnterpriseTaskController : ControllerBase
 
     /// <summary>
     /// Lấy thống kê công việc của Enterprise
+    /// Admin sẽ lấy thống kê của toàn bộ hệ thống
     /// </summary>
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
     {
-        var enterprise = await GetCurrentEnterpriseAsync();
-        if (enterprise == null)
-            return Unauthorized(new { message = "Enterprise profile not found." });
+        bool isAdmin = User.IsInRole("Admin");
+        Enterprise? enterprise = null;
 
-        var tasks = await _context.CollectionTasks
-            .Where(t => t.EnterpriseId == enterprise.Id)
-            .Include(t => t.WasteReport)
-            .ToListAsync();
+        if (!isAdmin)
+        {
+            enterprise = await GetCurrentEnterpriseAsync();
+            if (enterprise == null)
+                return Unauthorized(new { message = "Enterprise profile not found." });
+        }
+
+        var query = _context.CollectionTasks.AsQueryable();
+
+        if (!isAdmin && enterprise != null)
+        {
+            query = query.Where(t => t.EnterpriseId == enterprise.Id);
+        }
+
+        var tasks = await query.Include(t => t.WasteReport).ToListAsync();
 
         var totalUnassigned = tasks.Count(t => t.CollectorId == null);
         var totalAssigned = tasks.Count(t => t.Status == CollectionTaskStatus.Assigned);
@@ -391,13 +456,14 @@ public class AssignCollectorRequest
 {
     public Guid CollectorId { get; set; }
 }
-        public class UpdateEnterpriseProfileRequest
-        {
-            public string? ServiceArea { get; set; }
-            public int? CapacityKgPerDay { get; set; }
-        }
 
-        public class UpdateEnterpriseWasteTypesRequest
-        {
-            public List<int> WasteCategoryIds { get; set; } = new();
-        }
+public class UpdateEnterpriseProfileRequest
+{
+    public string? ServiceArea { get; set; }
+    public int? CapacityKgPerDay { get; set; }
+}
+
+public class UpdateEnterpriseWasteTypesRequest
+{
+    public List<int> WasteCategoryIds { get; set; } = new();
+}
