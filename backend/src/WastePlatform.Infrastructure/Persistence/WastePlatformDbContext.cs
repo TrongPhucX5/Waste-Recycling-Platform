@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WastePlatform.Domain.Entities;
 using WastePlatform.Domain.Enums;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace WastePlatform.Infrastructure.Persistence;
 
@@ -188,7 +189,12 @@ public class WastePlatformDbContext : DbContext
             entity.Property(e => e.ReportId).HasColumnName("report_id");
             entity.Property(e => e.EnterpriseId).HasColumnName("enterprise_id");
             entity.Property(e => e.CollectorId).HasColumnName("collector_id");
-            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
+            var collectionTaskStatusConverter = new ValueConverter<CollectionTaskStatus, string>(
+                v => v == CollectionTaskStatus.OnTheWay ? "on_the_way" : v.ToString().ToLower(),
+                v => v == "on_the_way" ? CollectionTaskStatus.OnTheWay : Enum.Parse<CollectionTaskStatus>(v, true)
+            );
+
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion(collectionTaskStatusConverter);
             entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
             entity.Property(e => e.CollectedWeightKg).HasColumnName("collected_weight_kg").HasPrecision(8, 2);
             entity.Property(e => e.AssignedAt).HasColumnName("assigned_at");
@@ -221,7 +227,12 @@ public class WastePlatformDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.TaskId).HasColumnName("task_id");
-            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
+            var logTaskStatusConverter = new ValueConverter<CollectionTaskStatus, string>(
+                v => v == CollectionTaskStatus.OnTheWay ? "on_the_way" : v.ToString().ToLower(),
+                v => v == "on_the_way" ? CollectionTaskStatus.OnTheWay : Enum.Parse<CollectionTaskStatus>(v, true)
+            );
+
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion(logTaskStatusConverter);
             entity.Property(e => e.ChangedAt).HasColumnName("changed_at");
             
             entity.HasOne(e => e.CollectionTask)

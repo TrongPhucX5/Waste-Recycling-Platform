@@ -8,6 +8,7 @@ using WastePlatform.Infrastructure.Persistence;
 using WastePlatform.Infrastructure.Services;
 // Thêm thư mục chứa UserRepository (điều chỉnh lại nếu bạn để thư mục khác nhé)
 using WastePlatform.Infrastructure.Persistence.Repositories; 
+using WastePlatform.API.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,11 +65,17 @@ builder.Services.AddScoped<IRewardPointsRepository, RewardPointsRepository>();
 // Đăng ký MediatR để xử lý CQRS (Queries/Commands)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));
 
+// Đăng ký SignalR cho Real-time Updates (WRP-113)
+builder.Services.AddSignalR();
+
 // ── CORS ─────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", corsBuilder =>
-        corsBuilder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+        corsBuilder
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader());
 });
 
 // ── Controllers & Swagger ─────────────────────────────────────────────
@@ -146,5 +153,8 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<TaskHub>("/hubs/task");
 
 app.Run();

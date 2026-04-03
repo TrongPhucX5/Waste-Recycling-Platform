@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using WastePlatform.Domain.Entities;
 using WastePlatform.Domain.Enums;
 using WastePlatform.Infrastructure.Persistence;
+using Microsoft.AspNetCore.SignalR;
+using WastePlatform.API.Hubs;
 
 namespace WastePlatform.API.Controllers;
 
@@ -15,10 +17,12 @@ namespace WastePlatform.API.Controllers;
 public class EnterpriseTaskController : ControllerBase
 {
     private readonly WastePlatformDbContext _context;
+    private readonly IHubContext<TaskHub> _hubContext;
 
-    public EnterpriseTaskController(WastePlatformDbContext context)
+    public EnterpriseTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext)
     {
         _context = context;
+        _hubContext = hubContext;
     }
 
     private async Task<Enterprise?> GetCurrentEnterpriseAsync()
@@ -154,6 +158,9 @@ public class EnterpriseTaskController : ControllerBase
         {
             task.AssignCollector(request.CollectorId);
             await _context.SaveChangesAsync();
+
+            // Phát sóng sự kiện SignalR tới toàn bộ Client
+            await _hubContext.Clients.All.SendAsync("TaskStatusUpdated", id, CollectionTaskStatus.Assigned.ToString());
 
             return Ok(new 
             { 

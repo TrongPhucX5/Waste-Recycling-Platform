@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using WastePlatform.Domain.Entities;
 using WastePlatform.Domain.Enums;
 using WastePlatform.Infrastructure.Persistence;
+using Microsoft.AspNetCore.SignalR;
+using WastePlatform.API.Hubs;
 
 namespace WastePlatform.API.Controllers;
 
@@ -14,10 +16,12 @@ namespace WastePlatform.API.Controllers;
 public class CollectorTaskController : ControllerBase
 {
     private readonly WastePlatformDbContext _context;
+    private readonly IHubContext<TaskHub> _hubContext;
 
-    public CollectorTaskController(WastePlatformDbContext context)
+    public CollectorTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext)
     {
         _context = context;
+        _hubContext = hubContext;
     }
 
     private async Task<Collector?> GetCurrentCollectorAsync()
@@ -103,6 +107,9 @@ public class CollectorTaskController : ControllerBase
         {
             task.SetOnTheWay();
             await _context.SaveChangesAsync();
+            
+            // Phát sóng sự kiện SignalR tới toàn bộ Client
+            await _hubContext.Clients.All.SendAsync("TaskStatusUpdated", id, CollectionTaskStatus.OnTheWay.ToString());
 
             return Ok(new { message = "Task status updated to OnTheWay.", taskId = id });
         }
@@ -176,6 +183,9 @@ public class CollectorTaskController : ControllerBase
             task.WasteReport.Collect();
 
             await _context.SaveChangesAsync();
+            
+            // Phát sóng sự kiện SignalR
+            await _hubContext.Clients.All.SendAsync("TaskStatusUpdated", id, CollectionTaskStatus.Collected.ToString());
 
             return Ok(new { message = "Task completed successfully.", taskId = id });
         }

@@ -15,6 +15,7 @@ import {
   TaskProgressResponse,
 } from "../../lib/api/enterpriseTaskApi";
 import { AlertCircle, MapPin, User, CheckCircle, Clock } from "lucide-react";
+import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 
 export const EnterpriseTaskManagement: React.FC = () => {
   const [tasks, setTasks] = useState<EnterpriseCollectionTask[]>([]);
@@ -67,6 +68,31 @@ export const EnterpriseTaskManagement: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // SignalR Real-time Updates Setup
+  useEffect(() => {
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:8080";
+    const newConnection = new HubConnectionBuilder()
+      .withUrl(`${backendUrl}/hubs/task`)
+      .configureLogging(LogLevel.Information)
+      .withAutomaticReconnect()
+      .build();
+
+    newConnection.start()
+      .then(() => {
+        console.log("SignalR Connected");
+        newConnection.on("TaskStatusUpdated", (taskId, status) => {
+          console.log(`Task ${taskId} status changed to ${status}`);
+          // Trigger a refresh when status changes
+          fetchData();
+        });
+      })
+      .catch((e) => console.log("SignalR Connection Error: ", e));
+
+    return () => {
+      newConnection.stop();
+    };
+  }, []);
 
   const handleAssignClick = (task: EnterpriseCollectionTask) => {
     setSelectedTask(task);
