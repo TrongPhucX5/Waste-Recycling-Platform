@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { PlusCircle, FileText, Trophy, TrendingUp, Clock, CheckCircle, Camera, MapPin, Users, Award, Target } from "lucide-react";
+import { PlusCircle, FileText, Trophy, TrendingUp, Clock, CheckCircle, Camera, MapPin, Users, Award, Target, Crown, Medal } from "lucide-react";
 
 interface RecentReport {
   id: string;
@@ -139,7 +139,7 @@ export default function CitizenDashboardPage() {
         {/* Quick Actions */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Thao tác nhanh</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <Link
               href="/citizen/create-report"
               className="flex flex-col items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-emerald-50 hover:border-emerald-300 transition-colors group"
@@ -171,6 +171,16 @@ export default function CitizenDashboardPage() {
             </Link>
 
             <Link
+              href="/leaderboard"
+              className="flex flex-col items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-red-50 hover:border-red-300 transition-colors group"
+            >
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center group-hover:bg-red-200 transition-colors">
+                <Crown className="w-6 h-6 text-red-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-700 text-center">Bảng Xếp Hạng</span>
+            </Link>
+
+            <Link
               href="/locations"
               className="flex flex-col items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-purple-50 hover:border-purple-300 transition-colors group"
             >
@@ -179,6 +189,57 @@ export default function CitizenDashboardPage() {
               </div>
               <span className="text-sm font-medium text-gray-700 text-center">Tra cứu điểm</span>
             </Link>
+          </div>
+        </div>
+
+        {/* Mini Leaderboard */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Crown className="w-5 h-5 text-yellow-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Bảng Xếp Hạng</h2>
+            </div>
+            <Link
+              href="/leaderboard"
+              className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+            >
+              Xem tất cả →
+            </Link>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+              <div className="flex items-center gap-3">
+                <Crown className="w-5 h-5 text-yellow-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Nguyễn Văn A</p>
+                  <p className="text-xs text-gray-600">Thành viên Bạch Kim</p>
+                </div>
+              </div>
+              <span className="font-bold text-yellow-600">2,500 đ</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-3">
+                <Medal className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="font-medium text-gray-900">Lê Thị B</p>
+                  <p className="text-xs text-gray-600">Thành viên Vàng</p>
+                </div>
+              </div>
+              <span className="font-bold text-gray-600">1,800 đ</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <div className="flex items-center gap-3">
+                <Medal className="w-5 h-5 text-amber-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Trần Văn C</p>
+                  <p className="text-xs text-gray-600">Thành viên Bạc</p>
+                </div>
+              </div>
+              <span className="font-bold text-amber-600">950 đ</span>
+            </div>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import Image from "next/image";
 import {
   LayoutDashboard,
   Users,
@@ -71,12 +72,16 @@ export const AdminDashboard: React.FC = () => {
         {/* Logo */}
         <div className="p-6 border-b border-gray-200 flex items-center justify-center">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#0AA468] to-[#067D54] rounded-lg flex items-center justify-center text-white font-bold">
-              ♻️
-            </div>
+            <Image
+              src="/logo/logo.png"
+              alt="CWCRP Logo"
+              width={100}
+              height={100}
+              className="rounded-lg"
+            />
             {sidebarOpen && (
               <div>
-                <h1 className="text-lg font-bold text-gray-900">WasteRec</h1>
+                <h1 className="text-lg font-bold text-gray-900">CWCRP</h1>
                 <p className="text-xs text-gray-500">Admin Portal</p>
               </div>
             )}
@@ -189,7 +194,7 @@ const SettingsPage: React.FC = () => {
             </label>
             <input
               type="text"
-              defaultValue="WasteRec Platform"
+              defaultValue="CWCRP Platform"
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
             />
           </div>
@@ -200,7 +205,7 @@ const SettingsPage: React.FC = () => {
             </label>
             <input
               type="email"
-              defaultValue="support@wasterec.com"
+              defaultValue="support@cwcrp.com"
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
             />
           </div>

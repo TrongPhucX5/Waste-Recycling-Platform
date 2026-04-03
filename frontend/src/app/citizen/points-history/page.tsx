@@ -10,7 +10,7 @@ const mockHistory = [
   { id: 3, date: "25/02/2026, 16:45", type: "earn", reason: "Báo cáo thu gom lớn (>15kg)", points: 100, status: "Thành công" },
   { id: 4, date: "20/02/2026, 10:00", type: "earn", reason: "Duy trì hoạt động 4 tuần liên tiếp", points: 200, status: "Thành công" },
   { id: 5, date: "15/02/2026, 08:30", type: "spend", reason: "Quyên góp Quỹ Trồng Rừng", points: 300, status: "Thành công" },
-  { id: 6, date: "10/02/2026, 11:20", type: "earn", reason: "Mời bạn bè tham gia WasteRec", points: 150, status: "Thành công" },
+  { id: 6, date: "10/02/2026, 11:20", type: "earn", reason: "Mời bạn bè tham gia CWCRP", points: 150, status: "Thành công" },
 ];
 
 export default function PointsHistoryPage() {

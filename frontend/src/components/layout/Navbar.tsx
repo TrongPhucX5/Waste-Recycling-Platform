@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Menu, X, LogIn, UserPlus } from "lucide-react";
@@ -43,7 +44,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     ];
 
     const citizenMenu = [
-      { label: "Trang Chủ", href: "/" },
       { label: "Bảng Điều Khiển", href: "/citizen/dashboard" },
       { label: "Tạo Báo Cáo", href: "/citizen/create-report" },
       { label: "Quản Lý Báo Cáo", href: "/citizen/reports" },
@@ -51,21 +51,18 @@ export const Navbar: React.FC<NavbarProps> = ({
     ];
 
     const collectorMenu = [
-      { label: "Trang Chủ", href: "/" },
       { label: "Bảng Điều Khiển", href: "/collector/dashboard" },
       { label: "Tuyến Đường", href: "/collector/routes" },
       { label: "Thu Gom", href: "/collector/collection" },
     ];
 
     const enterpriseMenu = [
-      { label: "Trang Chủ", href: "/" },
       { label: "Bảng Điều Khiển", href: "/enterprise/dashboard" },
       { label: "Quản Lý Điểm", href: "/enterprise/points" },
       { label: "Báo Cáo", href: "/enterprise/reports" },
     ];
 
     const adminMenu = [
-      { label: "Trang Chủ", href: "/" },
       { label: "Bảng Điều Khiển", href: "/admin/dashboard" },
       { label: "Quản Lý Người Dùng", href: "/admin/users" },
       { label: "Quản Lý Hệ Thống", href: "/admin/system" },
@@ -119,29 +116,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             href={homeHref}
             className="flex items-center gap-3 group flex-shrink-0"
           >
-            <div
-              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
-                transparent
-                  ? "bg-white/20 group-hover:bg-white/30"
-                  : "bg-[#0AA468] group-hover:bg-[#088F5A]"
-              }`}
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 40 40"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M20 30V10M14 16V20C14 22 15 23 17 23H20M26 16V20C26 22 25 23 23 23H20M15 34H25"
-                  stroke={transparent ? "#fff" : "white"}
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
+            <Image
+              src="/logo/logo.png"
+              alt="CWCRP Logo"
+              width={100}
+              height={100}
+              className="rounded-lg"
+            />
             <span
               className={`font-bold text-lg hidden sm:inline transition-colors ${
                 transparent
@@ -149,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   : "text-gray-900 group-hover:text-[#0AA468]"
               }`}
             >
-              WasteRec
+              CWCRP
             </span>
           </Link>
 

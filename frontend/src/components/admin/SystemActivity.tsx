@@ -193,7 +193,7 @@ export const SystemActivity: React.FC = () => {
         <div>
           <h1 className="text-4xl font-bold text-gray-900">Giám Sát Hệ Thống</h1>
           <p className="text-gray-600 mt-2">
-            Tổng quan hoạt động toàn bộ nền tảng WasteRec
+            Tổng quan hoạt động toàn bộ nền tảng CWCRP
           </p>
         </div>
         <div className="text-right">

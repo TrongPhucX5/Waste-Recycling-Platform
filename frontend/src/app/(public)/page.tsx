@@ -1,41 +1,53 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { 
   ArrowRight, 
   MapPin, 
   Recycle, 
   Trophy, 
   Users, 
-  TrendingUp, 
-  CheckCircle,
-  Leaf,
   TreePine,
-  Award,
-  BarChart3,
-  Globe
+  Leaf
 } from "lucide-react";
 
 export default function Home() {
+  // Khởi tạo state với các số bằng 0. Hoàn toàn không có data giả.
   const [stats, setStats] = useState({
-    totalWaste: 15420,
-    totalPoints: 89350,
-    totalUsers: 3247,
-    treesSaved: 892
+    totalWaste: 0,
+    totalPoints: 0,
+    totalUsers: 0,
+    treesSaved: 0
   });
 
-  // Simulate real-time stats update
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStats(prev => ({
-        totalWaste: prev.totalWaste + Math.floor(Math.random() * 10),
-        totalPoints: prev.totalPoints + Math.floor(Math.random() * 50),
-        totalUsers: prev.totalUsers + Math.floor(Math.random() * 3),
-        treesSaved: prev.treesSaved + Math.floor(Math.random() * 2)
-      }));
-    }, 5000);
+    // Gọi API lấy dữ liệu thật từ Backend
+    const fetchPublicStats = async () => {
+      try {
+        // GỌI API PUBLIC (Không cần Authorization Bearer)
+        // TODO: Sửa lại đường dẫn này cho khớp với API C# của ông
+        const response = await fetch("http://localhost:8080/api/public/statistics");
+        
+        if (response.ok) {
+          const json = await response.json();
+          const data = json.data || json;
 
-    return () => clearInterval(interval);
+          setStats({
+            totalWaste: data.totalWasteKg || 0,
+            totalPoints: data.totalPoints || 0,
+            totalUsers: data.totalUsers || 0,
+            treesSaved: data.treesSaved || 0 
+          });
+        } else {
+          console.warn("API chưa sẵn sàng hoặc trả về lỗi. Giữ nguyên số 0.");
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải số liệu thống kê:", error);
+      }
+    };
+
+    fetchPublicStats();
   }, []);
 
   const steps = [
@@ -121,7 +133,7 @@ export default function Home() {
               <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Recycle className="w-8 h-8 text-emerald-600" />
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">
+              <div className="text-3xl font-bold text-gray-900 mb-2 transition-all duration-1000">
                 {formatNumber(stats.totalWaste)} kg
               </div>
               <div className="text-gray-600">Rác đã tái chế</div>
@@ -131,7 +143,7 @@ export default function Home() {
               <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Trophy className="w-8 h-8 text-yellow-600" />
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">
+              <div className="text-3xl font-bold text-gray-900 mb-2 transition-all duration-1000">
                 {formatNumber(stats.totalPoints)}
               </div>
               <div className="text-gray-600">Điểm thưởng đã phát</div>
@@ -141,7 +153,7 @@ export default function Home() {
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-blue-600" />
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">
+              <div className="text-3xl font-bold text-gray-900 mb-2 transition-all duration-1000">
                 {formatNumber(stats.totalUsers)}
               </div>
               <div className="text-gray-600">Người dùng tham gia</div>
@@ -151,7 +163,7 @@ export default function Home() {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <TreePine className="w-8 h-8 text-green-600" />
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">
+              <div className="text-3xl font-bold text-gray-900 mb-2 transition-all duration-1000">
                 {formatNumber(stats.treesSaved)}
               </div>
               <div className="text-gray-600">Cây xanh đã cứu</div>
@@ -181,7 +193,7 @@ export default function Home() {
                 
                 {/* Connector Line */}
                 {index < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2">
+                  <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
                     <div className="w-8 h-0.5 bg-gray-300"></div>
                     <ArrowRight className="w-4 h-4 text-gray-400 absolute right-0 top-1/2 transform -translate-y-1/2" />
                   </div>
@@ -218,10 +230,14 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
-                  <Recycle className="w-6 h-6 text-white" />
-                </div>
-                <span className="font-bold text-xl">WasteRec</span>
+                <Image
+                  src="/logo/logo.png"
+                  alt="CWCRP Logo"
+                  width={100}
+                  height={100}
+                  className="rounded-lg"
+                />
+                <span className="font-bold text-xl">CWCRP</span>
               </div>
               <p className="text-gray-400">
                 Nền tảng thu gom rác thông minh cho Việt Nam
@@ -257,7 +273,7 @@ export default function Home() {
           </div>
 
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 WasteRec. Tất cả quyền được bảo lưu.</p>
+            <p>&copy; {new Date().getFullYear()} CWCRP. Tất cả quyền được bảo lưu.</p>
           </div>
         </div>
       </footer>
