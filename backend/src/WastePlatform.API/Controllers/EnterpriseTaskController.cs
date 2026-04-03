@@ -447,6 +447,87 @@ public class EnterpriseTaskController : ControllerBase
             TotalWeightKg = totalWeight
         });
     }
+
+    /// <summary>
+    /// Lấy tiến độ (timeline) chi tiết của một nhiệm vụ thu gom
+    /// </summary>
+    [HttpGet("{id}/progress")]
+    public async Task<IActionResult> GetTaskProgress(Guid id)
+    {
+        bool isAdmin = User.IsInRole("Admin");
+        Enterprise? enterprise = null;
+
+        if (!isAdmin)
+        {
+            enterprise = await GetCurrentEnterpriseAsync();
+            if (enterprise == null)
+                return Unauthorized(new { message = "Enterprise profile not found." });
+        }
+
+        var taskQuery = _context.CollectionTasks
+            .Include(t => t.StatusLogs)
+            .Include(t => t.Collector)
+                .ThenInclude(c => c.User)
+            .Include(t => t.Images)
+            .Where(t => t.Id == id);
+
+        if (!isAdmin && enterprise != null)
+        {
+            taskQuery = taskQuery.Where(t => t.EnterpriseId == enterprise.Id);
+        }
+
+        var task = await taskQuery.FirstOrDefaultAsync();
+        if (task == null)
+            return NotFound(new { message = "Task not found or does not belong to your enterprise." });
+
+        var timeline = new List<TaskTimelineEventDto>();
+
+        // Event 1: Assigned
+        timeline.Add(new TaskTimelineEventDto
+        {
+            Status = CollectionTaskStatus.Assigned.ToString(),
+            Timestamp = task.AssignedAt,
+            Details = task.Collector != null 
+                ? $"Được phân công cho người thu gom: {task.Collector.User.FullName}" 
+                : "Task được khởi tạo, đang chờ phân công"
+        });
+
+        // Other events from StatusLogs
+        var logs = task.StatusLogs.OrderBy(l => l.ChangedAt).ToList();
+        foreach (var log in logs)
+        {
+            var eventDto = new TaskTimelineEventDto
+            {
+                Status = log.Status.ToString(),
+                Timestamp = log.ChangedAt
+            };
+
+            if (log.Status == CollectionTaskStatus.OnTheWay)
+            {
+                eventDto.Details = "Người thu gom đang trên đường đến điểm lấy rác";
+            }
+            else if (log.Status == CollectionTaskStatus.Collected)
+            {
+                eventDto.Details = "Đã thu gom thành công";
+                eventDto.CollectedWeightKg = task.CollectedWeightKg;
+                eventDto.Notes = task.Notes;
+                eventDto.Images = task.Images.Select(img => img.ImageUrl).ToList();
+            }
+
+            // prevent duplicate entry if it's somehow Assigned again (shouldn't happen per business logic but just in case)
+            if (log.Status != CollectionTaskStatus.Assigned)
+            {
+                timeline.Add(eventDto);
+            }
+        }
+
+        return Ok(new
+        {
+            TaskId = task.Id,
+            CurrentStatus = task.Status.ToString(),
+            Timeline = timeline.OrderBy(t => t.Timestamp).ToList()
+        });
+    }
 }
 
 /// <summary>
@@ -466,4 +547,14 @@ public class UpdateEnterpriseProfileRequest
 public class UpdateEnterpriseWasteTypesRequest
 {
     public List<int> WasteCategoryIds { get; set; } = new();
+}
+
+public class TaskTimelineEventDto
+{
+    public string Status { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public string? Details { get; set; }
+    public decimal? CollectedWeightKg { get; set; }
+    public string? Notes { get; set; }
+    public List<string> Images { get; set; } = new();
 }
