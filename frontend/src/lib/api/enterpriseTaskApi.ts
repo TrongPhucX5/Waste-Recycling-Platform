@@ -58,6 +58,21 @@ export interface EnterpriseProfile {
   capacityKgPerDay: number | null;
 }
 
+export interface TaskTimelineEvent {
+  status: string;
+  timestamp: string;
+  details?: string | null;
+  collectedWeightKg?: number | null;
+  notes?: string | null;
+  images?: string[];
+}
+
+export interface TaskProgressResponse {
+  taskId: string;
+  currentStatus: string;
+  timeline: TaskTimelineEvent[];
+}
+
 export const enterpriseTaskApi = {
   /**
    * Fetches collection tasks for the current enterprise
@@ -129,5 +144,12 @@ export const enterpriseTaskApi = {
    */
   updateWasteTypes: (payload: { wasteCategoryIds: number[] }) => {
     return apiClient.put<{ message: string }>(`/enterprise/tasks/waste-types`, payload);
+  },
+
+  /**
+   * Get progress/timeline of a specific task
+   */
+  getTaskProgress: (taskId: string) => {
+    return apiClient.get<TaskProgressResponse>(`/enterprise/tasks/${taskId}/progress`);
   },
 };

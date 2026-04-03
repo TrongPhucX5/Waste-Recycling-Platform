@@ -12,8 +12,9 @@ import {
   EnterpriseCollectionTask,
   EnterpriseCollector,
   EnterpriseTaskStats,
+  TaskProgressResponse,
 } from "../../lib/api/enterpriseTaskApi";
-import { AlertCircle, MapPin, User, CheckCircle } from "lucide-react";
+import { AlertCircle, MapPin, User, CheckCircle, Clock } from "lucide-react";
 
 export const EnterpriseTaskManagement: React.FC = () => {
   const [tasks, setTasks] = useState<EnterpriseCollectionTask[]>([]);
@@ -33,6 +34,11 @@ export const EnterpriseTaskManagement: React.FC = () => {
     totalCollected: 0,
     totalWeightKg: 0,
   });
+
+  // Progress tracking states
+  const [progressModalOpen, setProgressModalOpen] = useState(false);
+  const [progressData, setProgressData] = useState<TaskProgressResponse | null>(null);
+  const [progressLoading, setProgressLoading] = useState(false);
 
   // Fetch tasks and collectors on component mount
   useEffect(() => {
@@ -96,6 +102,22 @@ export const EnterpriseTaskManagement: React.FC = () => {
     return statusMap[status] || "bg-gray-100 text-gray-800";
   };
 
+  const handleProgressClick = async (task: EnterpriseCollectionTask) => {
+    setProgressModalOpen(true);
+    setProgressData(null);
+    setProgressLoading(true);
+    try {
+      const data = await enterpriseTaskApi.getTaskProgress(task.id);
+      setProgressData(data);
+    } catch (err) {
+      console.error("Failed to fetch task progress:", err);
+      alert("Failed to load task progress.");
+      setProgressModalOpen(false);
+    } finally {
+      setProgressLoading(false);
+    }
+  };
+
   const unassignedCount = tasks.filter((t: EnterpriseCollectionTask) => !t.collectorId).length;
 
   const mapTasks = tasks.filter(
@@ -108,20 +130,19 @@ export const EnterpriseTaskManagement: React.FC = () => {
 
   const mapUrl = useMemo(() => {
     if (!mapTasks.length) return "";
-    const centerLat = mapTasks[0].report.latitude;
-    const centerLon = mapTasks[0].report.longitude;
-    const url = new URL("https://staticmap.openstreetmap.de/staticmap.php");
-    url.searchParams.set("center", `${centerLat},${centerLon}`);
-    url.searchParams.set("zoom", "13");
-    url.searchParams.set("size", "900x320");
-    url.searchParams.set("markers", `${centerLat},${centerLon},red-pushpin`);
-    mapTasks.slice(1, 8).forEach((task) => {
-      url.searchParams.append(
-        "markers",
-        `${task.report.latitude},${task.report.longitude},blue-pushpin`
-      );
-    });
-    return url.toString();
+    
+    const lats = mapTasks.map(t => t.report.latitude);
+    const lons = mapTasks.map(t => t.report.longitude);
+    
+    const padding = 0.005;
+    const minLat = Math.min(...lats) - padding;
+    const maxLat = Math.max(...lats) + padding;
+    const minLon = Math.min(...lons) - padding;
+    const maxLon = Math.max(...lons) + padding;
+    
+    const bbox = `${minLon},${minLat},${maxLon},${maxLat}`;
+    
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lats[0]},${lons[0]}`;
   }, [mapTasks]);
 
   const mapLink = useMemo(() => {
@@ -178,16 +199,20 @@ export const EnterpriseTaskManagement: React.FC = () => {
               WRP-113
             </span>
           </div>
-          <a href={mapLink} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-gray-200">
-            <img
+          <div className="block overflow-hidden rounded-xl border border-gray-200">
+            <iframe
               src={mapUrl}
-              alt="Enterprise collection task locations"
-              className="w-full h-[320px] object-cover"
+              className="w-full h-[320px] object-cover bg-gray-100"
+              title="Enterprise collection task locations"
+              style={{ border: 'none' }}
               loading="lazy"
             />
-          </a>
-          <p className="text-xs text-gray-500 mt-2">
-            Chỉ hiển thị tối đa 8 vị trí trên bản đồ.
+          </div>
+          <p className="text-xs text-gray-500 mt-2 flex justify-between">
+            <span>Bản đồ tương tác đa hướng (Kéo, Thả, Phóng to). Điểm đánh dấu là công việc đầu tiên.</span>
+            <a href={mapLink} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 underline">
+              Xem toàn màn hình
+            </a>
           </p>
         </Card>
       )}
@@ -333,17 +358,25 @@ export const EnterpriseTaskManagement: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 align-top">
-                      {!task.collectorId && task.status.toLowerCase() === "assigned" ? (
+                      <div className="flex flex-col gap-2">
+                        {!task.collectorId && task.status.toLowerCase() === "assigned" && (
+                          <Button
+                            onClick={() => handleAssignClick(task)}
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white w-full"
+                          >
+                            Assign
+                          </Button>
+                        )}
                         <Button
-                          onClick={() => handleAssignClick(task)}
+                          onClick={() => handleProgressClick(task)}
                           size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          variant="outline"
+                          className="w-full flex items-center justify-center gap-1"
                         >
-                          Assign
+                          <Clock className="w-4 h-4" /> Progress
                         </Button>
-                      ) : (
-                        <span className="text-xs text-gray-400 italic">No actions</span>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -399,6 +432,75 @@ export const EnterpriseTaskManagement: React.FC = () => {
                 )}
               </div>
             </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Progress Modal */}
+      <Modal
+        isOpen={progressModalOpen}
+        onClose={() => {
+          setProgressModalOpen(false);
+          setProgressData(null);
+        }}
+        title="Task Progress Timeline"
+        confirmText="Close"
+        onConfirm={() => setProgressModalOpen(false)}
+      >
+        <div className="p-2 max-h-[60vh] overflow-y-auto">
+          {progressLoading ? (
+            <div className="flex justify-center py-8">
+              <span className="text-gray-500">Loading progress...</span>
+            </div>
+          ) : progressData ? (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center border-b pb-3 border-gray-100">
+                <span className="font-semibold text-gray-700">Task ID: {progressData.taskId.substring(0, 8)}</span>
+                <Badge className={getStatusColor(progressData.currentStatus)}>
+                  {progressData.currentStatus}
+                </Badge>
+              </div>
+              
+              <div className="relative border-l border-gray-200 ml-3 space-y-6">
+                {progressData.timeline.map((event, index) => (
+                  <div key={index} className="pl-6 relative">
+                    <span 
+                      className={`absolute -left-1.5 top-1 w-3 h-3 rounded-full border-2 border-white ${
+                         event.status === 'Collected' ? 'bg-green-500' :
+                         event.status === 'OnTheWay' ? 'bg-yellow-500' :
+                         'bg-blue-500'
+                      }`}
+                    ></span>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-semibold text-gray-900">{event.status}</span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(event.timestamp).toLocaleString()}
+                      </span>
+                      {event.details && (
+                        <p className="text-sm text-gray-700 mt-1">{event.details}</p>
+                      )}
+                      {event.collectedWeightKg && (
+                        <div className="mt-2 bg-green-50 border border-green-100 rounded p-2 text-sm text-green-800 inline-block">
+                          <span className="font-semibold">Weight:</span> {event.collectedWeightKg} kg
+                          {event.notes && <p className="mt-1 text-sm italic">{event.notes}</p>}
+                        </div>
+                      )}
+                      {event.images && event.images.length > 0 && (
+                        <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+                          {event.images.map((img, i) => (
+                            <a href={img} target="_blank" rel="noreferrer" key={i}>
+                              <img src={img} alt={`Collected ${i}`} className="h-20 w-20 object-cover rounded border border-gray-200" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-500">No data found</div>
           )}
         </div>
       </Modal>
