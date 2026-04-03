@@ -54,6 +54,51 @@ public class AnalyticsRepository : IAnalyticsRepository
         var dayCount = (endDate - startDate).Days + 1;
         var averageReportsPerDay = dayCount > 0 ? (decimal)totalReports / dayCount : 0;
 
+        // Waste statistics by area
+        var wasteByArea = reports
+            .GroupBy(r => {
+                var addressParts = r.Address?.Split(',') ?? Array.Empty<string>();
+                return addressParts.Length > 0 ? addressParts[0].Trim() : "Unknown";
+            })
+            .Select(g => new WasteByAreaDto
+            {
+                Area = g.Key,
+                Count = g.Count(),
+                WeightKg = 0 // WasteReport doesn't have EstimatedWeight property
+            })
+            .OrderByDescending(x => x.Count)
+            .Take(10)
+            .ToList();
+
+        // Waste statistics by type
+        var wasteByTypeGrouped = reports
+            .GroupBy(r => r.WasteCategory?.Name ?? "Unknown")
+            .ToList();
+
+        var wasteByType = wasteByTypeGrouped
+            .Select(g => new WasteByTypeDto
+            {
+                Type = g.Key,
+                Count = g.Count(),
+                WeightKg = 0, // WasteReport doesn't have EstimatedWeight property
+                Percentage = 0 // Will be calculated if weight is available
+            })
+            .OrderByDescending(x => x.Count)
+            .ToList();
+
+        // Monthly trends
+        var monthlyTrends = reports
+            .GroupBy(r => r.CreatedAt.ToString("yyyy-MM"))
+            .Select(g => new MonthlyTrendDto
+            {
+                Month = g.Key,
+                ReportCount = g.Count(),
+                WeightKg = 0 // WasteReport doesn't have EstimatedWeight property
+            })
+            .OrderBy(x => x.Month)
+            .Take(12)
+            .ToList();
+
         return new ReportAnalyticsDto
         {
             TotalReports = totalReports,
@@ -62,7 +107,10 @@ public class AnalyticsRepository : IAnalyticsRepository
             RejectedReports = rejectedReports,
             CollectedReports = collectedReports,
             ReportsByCategory = reportsByCategory,
-            AverageReportsPerDay = averageReportsPerDay
+            AverageReportsPerDay = averageReportsPerDay,
+            WasteByArea = wasteByArea,
+            WasteByType = wasteByType,
+            MonthlyTrends = monthlyTrends
         };
     }
 

@@ -20,6 +20,11 @@ public class ReportAnalyticsDto
     public int CollectedReports { get; set; }
     public Dictionary<string, int> ReportsByCategory { get; set; } = new();
     public decimal AverageReportsPerDay { get; set; }
+    
+    // Waste statistics for charts
+    public List<WasteByAreaDto> WasteByArea { get; set; } = new();
+    public List<WasteByTypeDto> WasteByType { get; set; } = new();
+    public List<MonthlyTrendDto> MonthlyTrends { get; set; } = new();
 }
 
 public class UserAnalyticsDto
@@ -51,4 +56,29 @@ public class AnalyticsSummaryDto
     public ReportAnalyticsDto ReportAnalytics { get; set; } = new();
     public UserAnalyticsDto UserAnalytics { get; set; } = new();
     public WasteAnalyticsDto WasteAnalytics { get; set; } = new();
+}
+
+// DTO cho thống kê rác theo khu vực
+public class WasteByAreaDto
+{
+    public string Area { get; set; } = string.Empty; // Tên khu vực (Quận/Huyện)
+    public int Count { get; set; } // Số lượng báo cáo
+    public double WeightKg { get; set; } // Tổng trọng lượng (kg)
+}
+
+// DTO cho thống kê rác theo loại
+public class WasteByTypeDto
+{
+    public string Type { get; set; } = string.Empty; // Loại rác (Organic, Recyclable, Hazardous)
+    public int Count { get; set; } // Số lượng báo cáo
+    public double WeightKg { get; set; } // Tổng trọng lượng (kg)
+    public double Percentage { get; set; } // Tỷ lệ phần trăm
+}
+
+// DTO cho xu hướng theo thời gian
+public class MonthlyTrendDto
+{
+    public string Month { get; set; } = string.Empty; // Format: "2024-01"
+    public int ReportCount { get; set; }
+    public double WeightKg { get; set; }
 }

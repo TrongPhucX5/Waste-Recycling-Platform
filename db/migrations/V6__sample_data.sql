@@ -133,7 +133,7 @@ VALUES (UUID(), 'ee2ee2ee-2ee2-2ee2-2ee2-2ee2ee2ee2ee', 2);
 -- Collector 1 (Green Life)
 INSERT INTO users (id, email, password_hash, full_name, phone, role, is_active, created_at)
 VALUES (
-    'col1col1-col1-col1-col1-col1col1col1',
+    'c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4',
     'collector1@gmail.com',
     '$2b$11$tN7EUn/GW3UfJFw4OFtpKewSWNBk5wmj8VmJHm.sVFWcL.dpx63PK',
     'Phạm Minh Dũng',
@@ -145,7 +145,7 @@ VALUES (
 INSERT INTO collectors (id, user_id, enterprise_id, is_available, created_at)
 VALUES (
     'cc1cc1cc-1cc1-1cc1-1cc1-1cc1cc1cc1cc',
-    'col1col1-col1-col1-col1-col1col1col1',
+    'c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4',
     'ee1ee1ee-1ee1-1ee1-1ee1-1ee1ee1ee1ee',
     1,
     NOW()
@@ -154,7 +154,7 @@ VALUES (
 -- Collector 2 (Eco-Friendly)
 INSERT INTO users (id, email, password_hash, full_name, phone, role, is_active, created_at)
 VALUES (
-    'col2col2-col2-col2-col2-col2col2col2',
+    'c5c5c5c5-c5c5-c5c5-c5c5-c5c5c5c5c5c5',
     'collector2@gmail.com',
     '$2b$11$tN7EUn/GW3UfJFw4OFtpKewSWNBk5wmj8VmJHm.sVFWcL.dpx63PK',
     'Lý Đại Nghĩa',
@@ -165,8 +165,8 @@ VALUES (
 );
 INSERT INTO collectors (id, user_id, enterprise_id, is_available, created_at)
 VALUES (
-    'cc2cc2cc-2cc2-2ee2-2cc2-2cc2cc2cc2cc',
-    'col2col2-col2-col2-col2-col2col2col2',
+    'cc2cc2cc-2cc2-2cc2-2cc2-2cc2cc2cc2cc',
+    'c5c5c5c5-c5c5-c5c5-c5c5-c5c5c5c5c5c5',
     'ee2ee2ee-2ee2-2ee2-2ee2-2ee2ee2ee2ee',
     1,
     NOW()
@@ -175,7 +175,7 @@ VALUES (
 -- Collector 3 (Works for Urban Waste)
 INSERT INTO users (id, email, password_hash, full_name, phone, role, is_active, created_at)
 VALUES (
-    'col3col3-col3-col3-col3-col3col3col3',
+    'c6c6c6c6-c6c6-c6c6-c6c6-c6c6c6c6c6c6',
     'collector3@gmail.com',
     '$2b$11$tN7EUn/GW3UfJFw4OFtpKewSWNBk5wmj8VmJHm.sVFWcL.dpx63PK',
     'Hoàng Văn Thái',
@@ -187,7 +187,7 @@ VALUES (
 INSERT INTO collectors (id, user_id, enterprise_id, is_available, created_at)
 VALUES (
     'cc3cc3cc-3cc3-3cc3-3cc3-3cc3cc3cc3cc',
-    'col3col3-col3-col3-col3-col3col3col3',
+    'c6c6c6c6-c6c6-c6c6-c6c6-c6c6c6c6c6c6',
     'ee3ee3ee-3ee3-3ee3-3ee3-3ee3ee3ee3ee',
     1,
     NOW()
