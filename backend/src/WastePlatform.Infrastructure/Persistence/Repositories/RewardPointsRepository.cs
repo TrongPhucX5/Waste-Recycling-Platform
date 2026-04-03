@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WastePlatform.Application.Common.Interfaces;
+using WastePlatform.Application.Rewards.Queries;
 using WastePlatform.Domain.Entities;
 using WastePlatform.Domain.Enums; // Thêm dòng này để gọi Enum Role
 using WastePlatform.Infrastructure.Persistence;
@@ -57,6 +58,7 @@ public class RewardPointsRepository : IRewardPointsRepository
                 CitizenName = u.FullName,
                 
                 // Tính tổng điểm từ bảng RewardPoints (nếu null thì gán = 0)
+
                 TotalPoints = _context.RewardPoints
                                 .Where(rp => rp.CitizenId == u.Id)
                                 .Sum(rp => (int?)rp.Points) ?? 0,
@@ -82,6 +84,38 @@ public class RewardPointsRepository : IRewardPointsRepository
             .ToList();
 
         return (result, total);
+    }
+
+    public async Task<(IEnumerable<AreaLeaderboardDto> Areas, int Total)> GetAreaLeaderboardAsync(int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        // Gom nhóm người dân theo Quận/Huyện (District)
+        var areaQuery = _context.Users
+            .Where(u => u.Role.ToString() == "Citizen" && !string.IsNullOrEmpty(u.District))
+            .Select(u => new
+            {
+                District = u.District,
+                UserId = u.Id,
+                Points = _context.RewardPoints.Where(rp => rp.CitizenId == u.Id).Sum(rp => (int?)rp.Points) ?? 0,
+                Reports = _context.RewardPoints.Count(rp => rp.CitizenId == u.Id && rp.ReportId != null)
+            })
+            .GroupBy(x => x.District)
+            .Select(g => new AreaLeaderboardDto
+            {
+                Area = g.Key!,
+                TotalPoints = g.Sum(x => x.Points),
+                TotalReports = g.Sum(x => x.Reports),
+                Participants = g.Count() // Tổng số người dân trong khu vực
+            })
+            .OrderByDescending(x => x.TotalPoints);
+
+        var total = await areaQuery.CountAsync(cancellationToken);
+
+        var areas = await areaQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (areas, total);
     }
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)

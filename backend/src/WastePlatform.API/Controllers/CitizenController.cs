@@ -109,6 +109,40 @@ public class CitizenController : ControllerBase
         }
     }
 
+    /// <summary>Get leaderboard by areas/districts</summary>
+    [HttpGet("rewards/leaderboard/area")]
+    [AllowAnonymous] // Tiếp tục mở cửa tự do cho API này
+    public async Task<IActionResult> GetAreaLeaderboard([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        try
+        {
+            if (page < 1 || pageSize < 1)
+                return BadRequest(new { message = "Page and PageSize must be greater than 0" });
+
+            var result = await _mediator.Send(new GetAreaLeaderboardQuery
+            {
+                Page = page,
+                PageSize = pageSize
+            });
+
+            return Ok(new
+            {
+                message = "Area leaderboard retrieved successfully",
+                data = result.Leaderboard, 
+                pagination = new {
+                    page = result.Page,
+                    pageSize = result.PageSize,
+                    total = result.Total,
+                    totalPages = result.TotalPages
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+        }
+    }
+
     private Guid GetUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);

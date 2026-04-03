@@ -1,3 +1,4 @@
+using WastePlatform.Application.Rewards.Queries;
 using WastePlatform.Domain.Entities;
 
 namespace WastePlatform.Application.Common.Interfaces;
@@ -8,5 +9,7 @@ public interface IRewardPointsRepository
     Task<(IEnumerable<RewardPoints> Points, int Total)> GetByCitizenIdAsync(Guid citizenId, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<int> GetTotalPointsByCitizenIdAsync(Guid citizenId, CancellationToken cancellationToken = default);
     Task<(IEnumerable<(Guid CitizenId, string CitizenName, int TotalPoints, int ReportCount)>, int Total)> GetLeaderboardAsync(int page, int pageSize, CancellationToken cancellationToken = default);
+    // Thêm hàm này cho WRP-122
+    Task<(IEnumerable<AreaLeaderboardDto> Areas, int Total)> GetAreaLeaderboardAsync(int page, int pageSize, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

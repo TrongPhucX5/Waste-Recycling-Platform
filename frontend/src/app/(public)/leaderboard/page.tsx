@@ -50,7 +50,9 @@ export default function LeaderboardPage() {
   
   // States cho dữ liệu thật
   const [individualLeaders, setIndividualLeaders] = useState<LeaderboardEntry[]>([]);
+  const [areaLeaders, setAreaLeaders] = useState<AreaLeaderboard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [areaLoading, setAreaLoading] = useState(true);
   const [footerStats, setFooterStats] = useState({
     totalUsers: 0,
     totalPoints: 0,
@@ -98,7 +100,33 @@ export default function LeaderboardPage() {
       }
     };
 
-    // 2. Fetch Footer Stats (Dùng chung API Public với Landing Page)
+    // 2. Fetch Khu Vực (THÊM MỚI VÀO ĐÂY)
+    const fetchAreaLeaderboard = async () => {
+      try {
+        setAreaLoading(true);
+        const response = await fetch("http://localhost:8080/api/citizens/rewards/leaderboard/area?page=1&pageSize=50");
+        if (response.ok) {
+          const json = await response.json();
+          const apiData = json.data || [];
+          
+          const formatted = apiData.map((item: any, index: number) => ({
+            area: item.area,
+            totalPoints: item.totalPoints,
+            totalReports: item.totalReports,
+            participants: item.participants,
+            rank: index + 1,
+            change: 0 // Mock change
+          }));
+          setAreaLeaders(formatted);
+        }
+      } catch (error) {
+        console.error("Lỗi fetch area leaderboard:", error);
+      } finally {
+        setAreaLoading(false);
+      }
+    };
+
+    // 3. Fetch Footer Stats (Giữ nguyên như cũ)
     const fetchFooterStats = async () => {
       try {
         const response = await fetch("http://localhost:8080/api/public/statistics");
@@ -118,6 +146,7 @@ export default function LeaderboardPage() {
     };
 
     fetchIndividualLeaderboard();
+    fetchAreaLeaderboard(); // Gọi hàm mới
     fetchFooterStats();
   }, []);
 
@@ -313,12 +342,9 @@ export default function LeaderboardPage() {
             )}
           </div>
         ) : (
-          /* Area Leaderboard (ĐANG DÙNG MOCK DATA CHỜ BACKEND) */
+          /* Area Leaderboard */
           <div className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg mb-6 text-blue-800 text-sm">
-              ℹ️ Tính năng xếp hạng Khu Vực đang được phát triển ở Backend (Task WRP-122). Dưới đây là dữ liệu minh họa.
-            </div>
-            {mockAreaLeaders.map((area) => (
+            {areaLeaders.map((area) => (
               <div key={area.area} className={`bg-white rounded-xl shadow-sm border-2 p-6 ${getRankColor(area.rank)}`}>
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
