@@ -130,20 +130,19 @@ export const EnterpriseTaskManagement: React.FC = () => {
 
   const mapUrl = useMemo(() => {
     if (!mapTasks.length) return "";
-    const centerLat = mapTasks[0].report.latitude;
-    const centerLon = mapTasks[0].report.longitude;
-    const url = new URL("https://staticmap.openstreetmap.de/staticmap.php");
-    url.searchParams.set("center", `${centerLat},${centerLon}`);
-    url.searchParams.set("zoom", "13");
-    url.searchParams.set("size", "900x320");
-    url.searchParams.set("markers", `${centerLat},${centerLon},red-pushpin`);
-    mapTasks.slice(1, 8).forEach((task) => {
-      url.searchParams.append(
-        "markers",
-        `${task.report.latitude},${task.report.longitude},blue-pushpin`
-      );
-    });
-    return url.toString();
+    
+    const lats = mapTasks.map(t => t.report.latitude);
+    const lons = mapTasks.map(t => t.report.longitude);
+    
+    const padding = 0.005;
+    const minLat = Math.min(...lats) - padding;
+    const maxLat = Math.max(...lats) + padding;
+    const minLon = Math.min(...lons) - padding;
+    const maxLon = Math.max(...lons) + padding;
+    
+    const bbox = `${minLon},${minLat},${maxLon},${maxLat}`;
+    
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lats[0]},${lons[0]}`;
   }, [mapTasks]);
 
   const mapLink = useMemo(() => {
@@ -200,16 +199,20 @@ export const EnterpriseTaskManagement: React.FC = () => {
               WRP-113
             </span>
           </div>
-          <a href={mapLink} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-gray-200">
-            <img
+          <div className="block overflow-hidden rounded-xl border border-gray-200">
+            <iframe
               src={mapUrl}
-              alt="Enterprise collection task locations"
-              className="w-full h-[320px] object-cover"
+              className="w-full h-[320px] object-cover bg-gray-100"
+              title="Enterprise collection task locations"
+              style={{ border: 'none' }}
               loading="lazy"
             />
-          </a>
-          <p className="text-xs text-gray-500 mt-2">
-            Chỉ hiển thị tối đa 8 vị trí trên bản đồ.
+          </div>
+          <p className="text-xs text-gray-500 mt-2 flex justify-between">
+            <span>Bản đồ tương tác đa hướng (Kéo, Thả, Phóng to). Điểm đánh dấu là công việc đầu tiên.</span>
+            <a href={mapLink} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 underline">
+              Xem toàn màn hình
+            </a>
           </p>
         </Card>
       )}
