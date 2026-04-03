@@ -31,6 +31,7 @@ import { RewardConfiguration } from "./RewardConfiguration";
 import { EnterpriseTaskManagement } from "./EnterpriseTaskManagement";
 import { CollectorsManagement } from "./CollectorsManagement";
 import { ReportsAnalytics } from "./ReportsAnalytics";
+import { EnterpriseWasteAnalytics } from "./EnterpriseWasteAnalytics";
 import { ProfileSettings } from "./ProfileSettings";
 import { EnterpriseRequest } from "./types";
 
@@ -266,7 +267,7 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
       id: "analytics",
       label: "Reports & Analytics",
       icon: ChartColumnBig,
-      description: "Track performance by type, area, and task status",
+      description: "Track waste statistics by area, type, and time trends",
     },
     {
       id: "rewards",
@@ -385,12 +386,7 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
           />
         )}
 
-        {activeTab === "analytics" && (
-          <ReportsAnalytics
-            requests={requests}
-            taskStats={taskStats}
-          />
-        )}
+        {activeTab === "analytics" && <EnterpriseWasteAnalytics />}
 
         {activeTab === "rewards" && (
           <RewardConfiguration

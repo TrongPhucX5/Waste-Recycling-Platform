@@ -11,16 +11,18 @@ import {
   LogOut,
   Menu,
   X,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { SystemActivity } from "./SystemActivity"; // ← ĐỔI ĐÂY
+import { SystemActivity } from "./SystemActivity";
+import { WasteAnalytics } from "./WasteAnalytics";
 import { UserManagement } from "./UserManagement";
 import { ReportsManagement } from "./ReportsManagement";
 import { CollectionTasks } from "./CollectionTasks";
 import { DisputesManagement } from "./DisputesManagement";
 
-type Tab = "dashboard" | "users" | "reports" | "tasks" | "disputes" | "settings";
+type Tab = "dashboard" | "analytics" | "users" | "reports" | "tasks" | "disputes" | "settings";
 
 export const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -30,6 +32,7 @@ export const AdminDashboard: React.FC = () => {
 
   const tabs = [
     { id: "dashboard" as Tab, label: "Tổng Quan", icon: LayoutDashboard },
+    { id: "analytics" as Tab, label: "Thống Kê Rác", icon: BarChart3 },
     { id: "reports" as Tab, label: "Quản Lý Báo Cáo", icon: FileText },
     { id: "tasks" as Tab, label: "Quản Lý Thu Gom", icon: Truck },
     { id: "disputes" as Tab, label: "Khiếu Nại", icon: AlertCircle },
@@ -45,7 +48,9 @@ export const AdminDashboard: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <SystemActivity />; // ← ĐỔI ĐÂY
+        return <SystemActivity />;
+      case "analytics":
+        return <WasteAnalytics />;
       case "reports":
         return <ReportsManagement />;
       case "tasks":
