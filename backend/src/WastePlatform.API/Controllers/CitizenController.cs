@@ -74,6 +74,41 @@ public class CitizenController : ControllerBase
         }
     }
 
+    /// <summary>Get leaderboard of citizens by points</summary>
+    [HttpGet("rewards/leaderboard")]
+    [AllowAnonymous] // <--- DÒNG NÀY GIÚP API PUBLIC, KHÔNG CẦN LOGIN VẪN XEM ĐƯỢC
+    public async Task<IActionResult> GetLeaderboard([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        try
+        {
+            if (page < 1 || pageSize < 1)
+                return BadRequest(new { message = "Page and PageSize must be greater than 0" });
+
+            var result = await _mediator.Send(new GetLeaderboardQuery
+            {
+                Page = page,
+                PageSize = pageSize
+            });
+
+            return Ok(new
+            {
+                message = "Leaderboard retrieved successfully",
+                // Trả về trực tiếp mảng Leaderboard vào biến data để khớp với React Frontend nãy tui viết
+                data = result.Leaderboard, 
+                pagination = new {
+                    page = result.Page,
+                    pageSize = result.PageSize,
+                    total = result.Total,
+                    totalPages = result.TotalPages
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+        }
+    }
+
     private Guid GetUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
