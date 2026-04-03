@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Domain.Entities;
+using WastePlatform.Domain.Enums; // Thêm dòng này để gọi Enum Role
 using WastePlatform.Infrastructure.Persistence;
 
 namespace WastePlatform.Infrastructure.Persistence.Repositories;
@@ -46,18 +47,27 @@ public class RewardPointsRepository : IRewardPointsRepository
 
     public async Task<(IEnumerable<(Guid CitizenId, string CitizenName, int TotalPoints, int ReportCount)>, int Total)> GetLeaderboardAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        // Group reward points by citizen and calculate totals
-        var leaderboardQuery = _context.RewardPoints
-            .Include(rp => rp.Citizen)
-            .GroupBy(rp => rp.CitizenId)
-            .Select(g => new
+        // HƯỚNG 2: Bắt đầu từ bảng Users, lấy tất cả những người là Citizen
+        var leaderboardQuery = _context.Users
+            // Lọc ra các user có quyền là người dân
+            .Where(u => u.Role.ToString() == "Citizen")
+            .Select(u => new
             {
-                CitizenId = g.Key,
-                CitizenName = g.FirstOrDefault()!.Citizen.FullName,
-                TotalPoints = g.Sum(rp => rp.Points),
-                ReportCount = g.Count(rp => rp.ReportId.HasValue) // Count distinct reports
+                CitizenId = u.Id,
+                CitizenName = u.FullName,
+                
+                // Tính tổng điểm từ bảng RewardPoints (nếu null thì gán = 0)
+                TotalPoints = _context.RewardPoints
+                                .Where(rp => rp.CitizenId == u.Id)
+                                .Sum(rp => (int?)rp.Points) ?? 0,
+                
+                // Đếm số lần có ghi nhận báo cáo (ReportId khác null)
+                ReportCount = _context.RewardPoints
+                                .Count(rp => rp.CitizenId == u.Id && rp.ReportId != null)
             })
-            .OrderByDescending(x => x.TotalPoints);
+            // Sắp xếp: Ưu tiên Tổng Điểm cao nhất -> Nếu bằng điểm thì ai Báo cáo nhiều hơn sẽ xếp trên
+            .OrderByDescending(x => x.TotalPoints)
+            .ThenByDescending(x => x.ReportCount);
 
         var total = await leaderboardQuery.CountAsync(cancellationToken);
 
