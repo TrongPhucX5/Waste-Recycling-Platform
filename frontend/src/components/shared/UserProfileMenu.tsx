@@ -69,7 +69,7 @@ export const UserProfileMenu: React.FC = () => {
           {/* Menu Items */}
           <div className="py-1">
             <Link
-              href={dashboardLink}
+              href="/citizen/profile"
               className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 text-sm text-gray-700 transition-colors"
               onClick={() => setIsOpen(false)}
             >

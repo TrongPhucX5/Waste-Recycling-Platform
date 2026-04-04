@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 
 export default function AuthLayout({
@@ -70,9 +71,12 @@ export default function AuthLayout({
             <br /><br />
             Trong khi đó, quy định bắt buộc phân loại rác tại nguồn từ năm 2025 đặt ra nhu cầu cấp thiết về một nền tảng số hỗ trợ kết nối, điều phối và giám sát toàn bộ quy trình thu gom – tái chế theo khu vực một cách hiệu quả và minh bạch.
           </p>
-          <button className="bg-white text-[#0AA468] px-8 py-3 rounded-full font-bold shadow-lg hover:shadow-xl hover:bg-gray-50 transition transform hover:-translate-y-0.5 text-xs uppercase tracking-wider">
+          <Link 
+            href="/"
+            className="bg-white text-[#0AA468] px-8 py-3 rounded-full font-bold shadow-lg hover:shadow-xl hover:bg-gray-50 transition transform hover:-translate-y-0.5 text-xs uppercase tracking-wider inline-block"
+          >
             Tìm Hiểu Thêm
-          </button>
+          </Link>
         </div>
 
         {/* Right Side: Auth Form Container */}

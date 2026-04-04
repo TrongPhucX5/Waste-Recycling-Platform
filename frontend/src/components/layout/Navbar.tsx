@@ -18,6 +18,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
 
+  // Luôn về trang chủ public khi click logo/CWCRP
+  const getLogoHref = () => {
+    return "/";
+  };
+
   // Lấy trang chủ theo vai trò
   const getHomeHref = () => {
     if (!isAuthenticated) return "/";
@@ -83,20 +88,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   const homeHref = getHomeHref();
 
   // Danh sách các trang cho phép hiển thị Navbar này
-  const publicPaths = ["/", "/about", "/features", "/contact", "/guide", "/locations", "/leaderboard"];
+  const publicPaths = ["/", "/about", "/features", "/contact", "/guide", "/locations", "/leaderboard", "/settings", "/login", "/register"];
   const protectedPaths = ["/dashboard", "/reports", "/rewards", "/citizen", "/collector", "/enterprise", "/admin"];
-  const authPaths = ["/login", "/register", "/reset-password"];
+  const authPaths = ["/reset-password"];
   
   // Kiểm tra xem pathname hiện tại có nằm trong danh sách không
   const shouldShowNavbar = publicPaths.includes(pathname) || 
                            pathname?.startsWith("/reset-password") ||
                            protectedPaths.some(path => pathname?.startsWith(path));
 
-  // Ẩn navbar trên auth pages
-  const isAuthPage = authPaths.some(path => pathname?.startsWith(path));
-
-  // Nếu là auth page hoặc không thuộc các trang trên thì ẩn hoàn toàn Navbar này
-  if (isAuthPage || !shouldShowNavbar) {
+  // Ẩn navbar trên các trang không nằm trong danh sách
+  if (!shouldShowNavbar) {
     return null; 
   }
 
@@ -113,7 +115,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo */}
           <Link
-            href={homeHref}
+            href={getLogoHref()}
             className="flex items-center gap-3 group flex-shrink-0"
           >
             <Image

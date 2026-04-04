@@ -1,18 +1,89 @@
 "use client";
-import React, { useState } from "react";
-import { User, Lock, Bell, Shield, Save, Camera } from "lucide-react";
 
-type Tab = "profile" | "security";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { User, Lock, Bell, Shield, Save, Camera, Mail, Phone, MapPin, Settings } from "lucide-react";
+import { profileApi, ProfileDto, UpdateProfileDto } from "@/lib/api/profileApi";
+import { ApiError } from "@/lib/api/client";
+
+type Tab = "profile" | "security" | "notifications";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const [profile, setProfile] = useState<ProfileDto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [updateForm, setUpdateForm] = useState<UpdateProfileDto>({
+    fullName: "",
+    phone: "",
+    district: "",
+    ward: "",
+  });
 
-  // Dữ liệu giả để hiển thị UI
-  const mockUser = {
-    fullName: "Nguyễn Văn A",
-    email: "nguyenvana@example.com",
-    phone: "0901234567",
-    address: "123 Đường Ngọc Khánh, Ba Đình, Hà Nội"
+  useEffect(() => {
+    if (activeTab === "profile") {
+      loadProfile();
+    }
+  }, [activeTab]);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await profileApi.getProfile();
+      setProfile(response.data);
+      setUpdateForm({
+        fullName: response.data.fullName,
+        phone: response.data.phone || "",
+        district: response.data.district || "",
+        ward: response.data.ward || "",
+      });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Failed to load profile");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!updateForm.fullName.trim()) {
+      setError("Full name is required");
+      return;
+    }
+
+    try {
+      setUpdateLoading(true);
+      setError(null);
+      setSuccessMessage(null);
+      
+      const response = await profileApi.updateProfile(updateForm);
+      setProfile(response.data);
+      setSuccessMessage("Profile updated successfully!");
+      
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Failed to update profile");
+      }
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const handleInputChange = (field: keyof UpdateProfileDto, value: string) => {
+    setUpdateForm(prev => ({ ...prev, [field]: value }));
+    setError(null);
   };
 
   return (
@@ -24,6 +95,18 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Cài Đặt Tài Khoản</h1>
           <p className="text-gray-500 mt-2">Quản lý thông tin cá nhân và bảo mật của bạn</p>
         </div>
+
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
+            {successMessage}
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row min-h-[600px]">
           
@@ -53,6 +136,18 @@ export default function SettingsPage() {
                 <Shield size={18} className={activeTab === "security" ? "text-emerald-600" : "text-gray-400"} />
                 Bảo mật & Mật khẩu
               </button>
+
+              <button
+                onClick={() => setActiveTab("notifications")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                  activeTab === "notifications"
+                    ? "bg-emerald-100 text-emerald-800 shadow-sm"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                <Bell size={18} className={activeTab === "notifications" ? "text-emerald-600" : "text-gray-400"} />
+                Cài đặt thông báo
+              </button>
             </nav>
           </div>
 
@@ -71,7 +166,7 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-6 mb-8">
                   <div className="relative">
                     <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-md">
-                      {mockUser.fullName.charAt(0)}
+                      {profile?.fullName?.charAt(0) || "U"}
                     </div>
                     <button className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md border border-gray-100 hover:bg-gray-50 text-emerald-600 transition-colors">
                       <Camera size={16} />
@@ -83,54 +178,77 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Form Thông tin */}
-                <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-gray-500">Loading...</div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleUpdateProfile} className="space-y-5">
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700">Họ và Tên</label>
+                      <label className="text-sm font-semibold text-gray-700">Họ và Tên *</label>
                       <input 
                         type="text" 
-                        defaultValue={mockUser.fullName}
+                        value={updateForm.fullName}
+                        onChange={(e) => handleInputChange('fullName', e.target.value)}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-gray-800"
+                        required
                       />
                     </div>
+
                     <div className="space-y-2">
                       <label className="text-sm font-semibold text-gray-700">Số điện thoại</label>
                       <input 
                         type="tel" 
-                        defaultValue={mockUser.phone}
+                        value={updateForm.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-gray-800"
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700">Địa chỉ Email</label>
-                    <input 
-                      type="email" 
-                      defaultValue={mockUser.email}
-                      disabled
-                      className="w-full bg-gray-100 border border-gray-200 rounded-xl p-3 text-gray-500 cursor-not-allowed"
-                    />
-                    <p className="text-xs text-gray-500">Email không thể thay đổi sau khi đăng ký.</p>
-                  </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">Địa chỉ Email</label>
+                      <input 
+                        type="email" 
+                        value={profile?.email || ""}
+                        disabled
+                        className="w-full bg-gray-100 border border-gray-200 rounded-xl p-3 text-gray-500 cursor-not-allowed"
+                      />
+                      <p className="text-xs text-gray-500">Email không thể thay đổi sau khi đăng ký.</p>
+                    </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700">Địa chỉ thường trú</label>
-                    <input 
-                      type="text" 
-                      defaultValue={mockUser.address}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-gray-800"
-                    />
-                  </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Quận/Huyện</label>
+                        <input 
+                          type="text" 
+                          value={updateForm.district}
+                          onChange={(e) => handleInputChange('district', e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-gray-800"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Phường/Xã</label>
+                        <input 
+                          type="text" 
+                          value={updateForm.ward}
+                          onChange={(e) => handleInputChange('ward', e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-gray-800"
+                        />
+                      </div>
+                    </div>
 
-                  <div className="pt-4 border-t border-gray-100">
-                    <button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2">
-                      <Save size={18} />
-                      Lưu Thay Đổi
-                    </button>
-                  </div>
-                </form>
+                    <div className="pt-4 border-t border-gray-100">
+                      <button 
+                        type="submit" 
+                        disabled={updateLoading}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Save size={18} />
+                        {updateLoading ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             )}
 
@@ -177,6 +295,75 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </form>
+              </div>
+            )}
+
+            {/* TAB 3: THÔNG BÁO */}
+            {activeTab === "notifications" && (
+              <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                 <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                  <Bell size={24} className="text-emerald-500" />
+                  Cài đặt thông báo
+                </h2>
+
+                <div className="space-y-6">
+                  <div className="bg-gray-50 rounded-xl p-6">
+                    <h3 className="font-semibold text-gray-800 mb-4">Thông báo Email</h3>
+                    <div className="space-y-3">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div>
+                          <p className="font-medium text-gray-700">Báo cáo mới được tiếp nhận</p>
+                          <p className="text-sm text-gray-500">Nhận email khi báo cáo rác được tiếp nhận</p>
+                        </div>
+                        <input type="checkbox" defaultChecked className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500" />
+                      </label>
+                      
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div>
+                          <p className="font-medium text-gray-700">Báo cáo đã được thu gom</p>
+                          <p className="text-sm text-gray-500">Nhận email khi rác đã được thu gom thành công</p>
+                        </div>
+                        <input type="checkbox" defaultChecked className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500" />
+                      </label>
+                      
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div>
+                          <p className="font-medium text-gray-700">Cập nhật điểm thưởng</p>
+                          <p className="text-sm text-gray-500">Nhận email khi có thay đổi điểm thưởng</p>
+                        </div>
+                        <input type="checkbox" className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500" />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-xl p-6">
+                    <h3 className="font-semibold text-gray-800 mb-4">Thông báo Push</h3>
+                    <div className="space-y-3">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div>
+                          <p className="font-medium text-gray-700">Collector đang đến</p>
+                          <p className="text-sm text-gray-500">Nhận thông báo khi collector sắp đến địa điểm</p>
+                        </div>
+                        <input type="checkbox" defaultChecked className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500" />
+                      </label>
+                      
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div>
+                          <p className="font-medium text-gray-700">Khuyến mãi & Ưu đãi</p>
+                          <p className="text-sm text-gray-500">Nhận thông báo về các chương trình khuyến mãi</p>
+                        </div>
+                        <input type="checkbox" className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500" />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2">
+                      <Save size={18} />
+                      Lưu Cài Đặt
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
             
