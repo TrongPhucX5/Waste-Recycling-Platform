@@ -114,5 +114,22 @@ namespace WastePlatform.Infrastructure.Persistence.Repositories
             await _context.SaveChangesAsync(ct);
             return true;
         }
+
+        public async Task<User?> GetUserByIdAsync(Guid userId, CancellationToken ct)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+        }
+
+        public async Task<User> UpdateProfileAsync(Guid userId, string fullName, string? phone, string? district, string? ward, CancellationToken ct)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+            if (user == null)
+                throw new KeyNotFoundException($"User with ID {userId} not found");
+
+            user.UpdateProfile(fullName, phone, district, ward);
+
+            await _context.SaveChangesAsync(ct);
+            return user;
+        }
     }
 }

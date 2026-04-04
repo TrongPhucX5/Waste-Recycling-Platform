@@ -59,4 +59,13 @@ public class User
         Role = newRole;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public void UpdateProfile(string fullName, string? phone, string? district, string? ward)
+    {
+        FullName = fullName;
+        Phone = phone;
+        District = district;
+        Ward = ward;
+        UpdatedAt = DateTime.UtcNow;
+    }
 }

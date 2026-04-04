@@ -18,5 +18,11 @@ namespace WastePlatform.Application.Common.Interfaces
         
         // 3. Sửa Quyền
         Task<bool> UpdateUserRoleAsync(string userId, string newRole, CancellationToken ct);
+        
+        // 4. Lấy thông tin user theo ID
+        Task<User?> GetUserByIdAsync(Guid userId, CancellationToken ct);
+        
+        // 5. Cập nhật thông tin profile
+        Task<User> UpdateProfileAsync(Guid userId, string fullName, string? phone, string? district, string? ward, CancellationToken ct);
     }
 }

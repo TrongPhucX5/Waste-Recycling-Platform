@@ -7,6 +7,9 @@ using WastePlatform.Application.Complaints.Queries;
 using WastePlatform.Application.Common.DTOs;
 using WastePlatform.Application.Reports.Queries;
 using WastePlatform.Application.Rewards.Queries;
+using WastePlatform.Application.Citizens.Profile.Commands;
+using WastePlatform.Application.Citizens.Profile.Queries;
+using WastePlatform.Application.Citizens.Profile.DTOs;
 using WastePlatform.Domain.Enums;
 
 namespace WastePlatform.API.Controllers;
@@ -136,6 +139,60 @@ public class CitizenController : ControllerBase
                     totalPages = result.TotalPages
                 }
             });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+        }
+    }
+
+    /// <summary>Get current citizen profile</summary>
+    [HttpGet("profile")]
+    public async Task<IActionResult> GetProfile()
+    {
+        try
+        {
+            var userId = GetUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized(new { message = "Invalid or missing user ID in token" });
+
+            var result = await _mediator.Send(new GetProfileQuery { UserId = userId });
+            return Ok(new { message = "Profile retrieved successfully", data = result });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+        }
+    }
+
+    /// <summary>Update current citizen profile</summary>
+    [HttpPut("profile")]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto profile)
+    {
+        try
+        {
+            var userId = GetUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized(new { message = "Invalid or missing user ID in token" });
+
+            if (string.IsNullOrWhiteSpace(profile.FullName))
+                return BadRequest(new { message = "Full name is required" });
+
+            var result = await _mediator.Send(new UpdateProfileCommand 
+            { 
+                UserId = userId, 
+                Profile = profile 
+            });
+            
+            return Ok(new { message = "Profile updated successfully", data = result });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
         catch (Exception ex)
         {
