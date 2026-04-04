@@ -1,11 +1,12 @@
 import React from "react";
+import { useRouter } from "next/navigation";
 import { Badge, Button } from "../ui";
 import { MapPin, Clock } from "lucide-react";
 import { CollectionTask } from "../../lib/api/collectorTaskApi";
 
 interface TaskCardProps {
   task: CollectionTask;
-  onUpdateStatus: (task: CollectionTask) => void;
+  onUpdateStatus?: (task: CollectionTask) => void;
 }
 
 const statusColors: Record<string, "warning" | "info" | "success" | "default"> = {
@@ -15,6 +16,8 @@ const statusColors: Record<string, "warning" | "info" | "success" | "default"> =
 };
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateStatus }) => {
+  const router = useRouter();
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -38,10 +41,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateStatus }) => {
         </div>
       </div>
 
-      <Button onClick={() => onUpdateStatus(task)} className="w-full">
-        {task.status === "Assigned" && "Start Pickup"}
-        {task.status === "OnTheWay" && "Confirm Collection"}
-        {task.status === "Collected" && "View Details"}
+      <Button onClick={() => router.push(`/collector/tasks/${task.id}`)} className="w-full">
+        Xem chi tiết & Cập nhật
       </Button>
     </div>
   );

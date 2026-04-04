@@ -44,6 +44,13 @@ export const collectorTaskApi = {
   },
 
   /**
+   * WRP-109: Fetch task detail by ID
+   */
+  getTaskById: (id: string) => {
+    return apiClient.get<any>(`/collector/tasks/${id}`);
+  },
+
+  /**
    * Update task status to "OnTheWay"
    */
   setOnTheWay: (id: string) => {
