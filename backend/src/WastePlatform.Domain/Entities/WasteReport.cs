@@ -54,6 +54,7 @@ public class WasteReport
             (ReportStatus.Pending,    ReportStatus.Accepted)  => true,
             (ReportStatus.Pending,    ReportStatus.Rejected)  => true,
             (ReportStatus.Accepted,   ReportStatus.Assigned)  => true,
+            (ReportStatus.Accepted,   ReportStatus.Collected) => true,
             (ReportStatus.Assigned,   ReportStatus.Collected) => true,
             _ => false
         };

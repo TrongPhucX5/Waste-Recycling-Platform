@@ -90,6 +90,60 @@ public class CollectorTaskController : ControllerBase
     }
 
     /// <summary>
+    /// WRP-109: Lấy chi tiết một nhiệm vụ thu gom
+    /// </summary>
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetTaskById(Guid id)
+    {
+        var collector = await GetCurrentCollectorAsync();
+        if (collector == null)
+            return Unauthorized(new { message = "Collector profile not found for current user." });
+
+        var task = await _context.CollectionTasks
+            .Include(t => t.WasteReport)
+                .ThenInclude(r => r.WasteCategory)
+            .Include(t => t.WasteReport)
+                .ThenInclude(r => r.Citizen)
+            .Include(t => t.Images)
+            .Include(t => t.StatusLogs)
+            .FirstOrDefaultAsync(t => t.Id == id && t.CollectorId == collector.Id);
+
+        if (task == null)
+            return NotFound(new { message = "Task not found or not assigned to you." });
+
+        return Ok(new
+        {
+            task.Id,
+            task.ReportId,
+            task.EnterpriseId,
+            task.CollectorId,
+            Status = task.Status.ToString(),
+            task.CollectedWeightKg,
+            task.Notes,
+            task.AssignedAt,
+            task.CompletedAt,
+            Report = new
+            {
+                task.WasteReport.Id,
+                task.WasteReport.Description,
+                task.WasteReport.Address,
+                task.WasteReport.Latitude,
+                task.WasteReport.Longitude,
+                Status = task.WasteReport.Status.ToString(),
+                CategoryName = task.WasteReport.WasteCategory?.Name,
+                CitizenName = task.WasteReport.Citizen?.FullName,
+                CitizenPhone = task.WasteReport.Citizen?.Phone
+            },
+            Images = task.Images.Select(i => i.ImageUrl),
+            StatusLogs = task.StatusLogs.OrderByDescending(l => l.ChangedAt).Select(l => new 
+            { 
+                Status = l.Status.ToString(), 
+                l.ChangedAt 
+            })
+        });
+    }
+
+    /// <summary>
     /// Cập nhật trạng thái nhiệm vụ thành "On the way" (Đang di chuyển)
     /// </summary>
     [HttpPut("{id}/on-the-way")]
@@ -99,13 +153,25 @@ public class CollectorTaskController : ControllerBase
         if (collector == null)
             return Unauthorized(new { message = "Collector profile not found." });
 
-        var task = await _context.CollectionTasks.FirstOrDefaultAsync(t => t.Id == id && t.CollectorId == collector.Id);
+        var task = await _context.CollectionTasks
+            .Include(t => t.StatusLogs)
+            .FirstOrDefaultAsync(t => t.Id == id && t.CollectorId == collector.Id);
         if (task == null)
             return NotFound(new { message = "Task not found or not assigned to you." });
 
         try
         {
             task.SetOnTheWay();
+            
+            // Force all existing logs to unchanged and new logs to added
+            foreach(var entry in _context.ChangeTracker.Entries<TaskStatusLog>())
+            {
+                if (entry.Entity.Status == CollectionTaskStatus.OnTheWay && entry.Entity.Id != Guid.Empty && entry.State != EntityState.Unchanged)
+                    entry.State = EntityState.Added;
+                else if (entry.State == EntityState.Modified)
+                    entry.State = EntityState.Unchanged;
+            }
+
             await _context.SaveChangesAsync();
             
             // Phát sóng sự kiện SignalR tới toàn bộ Client
@@ -131,6 +197,8 @@ public class CollectorTaskController : ControllerBase
 
         var task = await _context.CollectionTasks
             .Include(t => t.WasteReport)
+            .Include(t => t.StatusLogs)
+            .Include(t => t.Images)
             .FirstOrDefaultAsync(t => t.Id == id && t.CollectorId == collector.Id);
             
         if (task == null)
@@ -144,6 +212,15 @@ public class CollectorTaskController : ControllerBase
         try
         {
             task.Complete(weightKg, notes);
+            
+            // Force all existing logs to unchanged and new logs to added
+            foreach(var entry in _context.ChangeTracker.Entries<TaskStatusLog>())
+            {
+                if (entry.Entity.Status == CollectionTaskStatus.Collected && entry.Entity.Id != Guid.Empty && entry.State != EntityState.Unchanged)
+                    entry.State = EntityState.Added;
+                else if (entry.State == EntityState.Modified)
+                    entry.State = EntityState.Unchanged;
+            }
             
             // Xử lý hình ảnh xác nhận (nếu có)
             var images = form.Files.GetFiles("Images");
