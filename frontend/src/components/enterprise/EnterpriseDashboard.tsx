@@ -9,6 +9,7 @@ import {
   Users,
   ChartColumnBig,
   Settings,
+  History,
 } from "lucide-react";
 import { reportApi } from "../../lib/api/reportApi";
 import {
@@ -33,6 +34,7 @@ import { CollectorsManagement } from "./CollectorsManagement";
 import { ReportsAnalytics } from "./ReportsAnalytics";
 import { EnterpriseWasteAnalytics } from "./EnterpriseWasteAnalytics";
 import { ProfileSettings } from "./ProfileSettings";
+import { EnterpriseHistoryTable } from "./EnterpriseHistoryTable";
 import { EnterpriseRequest } from "./types";
 
 interface EnterpriseDashboardProps {
@@ -252,6 +254,12 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
       description: "Assign approved requests to collectors",
     },
     {
+      id: "history",
+      label: "History",
+      icon: History,
+      description: "View completed task history",
+    },
+    {
       id: "collectors",
       label: "Collectors",
       icon: Users,
@@ -365,6 +373,8 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
         )}
 
         {activeTab === "tasks" && <EnterpriseTaskManagement />}
+
+        {activeTab === "history" && <EnterpriseHistoryTable />}
 
         {activeTab === "collectors" && (
           <CollectorsManagement
