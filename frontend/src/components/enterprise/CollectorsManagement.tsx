@@ -230,7 +230,7 @@ export const CollectorsManagement: React.FC<CollectorsManagementProps> = ({
                   <tr key={collector.id}>
                     <td className="px-6 py-4">
                       <p className="font-medium text-gray-900">{collector.name}</p>
-                      <p className="text-xs text-gray-500">Joined {new Date(collector.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-gray-500">Joined {new Date(collector.createdAt).toLocaleDateString("vi-VN")}</p>
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-gray-700">{collector.email}</p>

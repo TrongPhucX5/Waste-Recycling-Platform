@@ -81,7 +81,7 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
           quantity: "N/A",
           location: report.address || "Unknown",
           status: (report.status || "Pending").toUpperCase(),
-          date: new Date(report.createdAt).toLocaleDateString("en-CA"),
+          date: new Date(report.createdAt).toLocaleDateString("vi-VN"),
           requester: report.citizenName || "Unknown",
         }));
         setRequests(transformedRequests);

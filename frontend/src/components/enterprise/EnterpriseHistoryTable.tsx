@@ -8,6 +8,7 @@ interface HistoryRow {
   location: string;
   collector: string;
   weight: string;
+  statusUpdatedAt: string;
   completedAt: string;
   status: string;
 }
@@ -40,7 +41,8 @@ export const EnterpriseHistoryTable: React.FC = () => {
     location: task.report.address || "Unknown",
     collector: task.collectorName || "Unknown",
     weight: task.collectedWeightKg ? `${task.collectedWeightKg} kg` : "N/A",
-    completedAt: task.completedAt ? new Date(task.completedAt).toLocaleString() : "N/A",
+    statusUpdatedAt: new Date(task.latestStatusChangedAt ?? task.assignedAt).toLocaleString("vi-VN", { hour12: false }),
+    completedAt: task.completedAt ? new Date(task.completedAt).toLocaleString("vi-VN", { hour12: false }) : "N/A",
     status: task.status,
   }));
 
@@ -65,7 +67,8 @@ export const EnterpriseHistoryTable: React.FC = () => {
             { label: "Collector", key: "collector", width: "15%" },
             { label: "Weight", key: "weight", width: "12%" },
             { label: "Location", key: "location", width: "26%" },
-            { label: "Completed At", key: "completedAt", width: "16%" },
+            { label: "Status Updated At", key: "statusUpdatedAt", width: "16%" },
+            { label: "Completed At", key: "completedAt", width: "12%" },
             {
               label: "Status",
               key: "status",
