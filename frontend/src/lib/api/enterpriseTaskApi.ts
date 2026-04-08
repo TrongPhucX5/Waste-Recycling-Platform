@@ -24,6 +24,7 @@ export interface EnterpriseCollectionTask {
   notes: string | null;
   assignedAt: string;
   completedAt: string | null;
+  latestStatusChangedAt: string | null;
   report: EnterpriseTaskReport;
 }
 

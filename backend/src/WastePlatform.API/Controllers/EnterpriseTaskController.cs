@@ -61,6 +61,7 @@ public class EnterpriseTaskController : ControllerBase
             .Include(t => t.Collector!)
                 .ThenInclude(c => c.User)
             .Include(t => t.Images)
+            .Include(t => t.StatusLogs)
             .AsQueryable();
 
         // Nếu KHÔNG phải Admin thì chỉ lấy task của Enterprise đó
@@ -96,6 +97,10 @@ public class EnterpriseTaskController : ControllerBase
                 t.Notes,
                 t.AssignedAt,
                 t.CompletedAt,
+                LatestStatusChangedAt = t.StatusLogs
+                    .OrderByDescending(log => log.ChangedAt)
+                    .Select(log => (DateTime?)log.ChangedAt)
+                    .FirstOrDefault(),
                 Report = new
                 {
                     t.WasteReport.Id,

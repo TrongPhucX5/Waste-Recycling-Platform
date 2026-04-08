@@ -330,7 +330,7 @@ export const EnterpriseTaskManagement: React.FC = () => {
                   <tr key={task.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4 align-top">
                       <p className="font-semibold text-gray-900">Task {task.id.substring(0, 8)}</p>
-                      <p className="text-xs text-gray-500 mt-1">Date: {new Date(task.assignedAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-gray-500 mt-1">Date: {new Date(task.assignedAt).toLocaleDateString("vi-VN")}</p>
                       {task.report.categoryName && (
                         <div className="mt-2">
                           <Badge className="bg-purple-100 text-purple-800">{task.report.categoryName}</Badge>
@@ -375,6 +375,9 @@ export const EnterpriseTaskManagement: React.FC = () => {
                         <Badge className={getStatusColor(task.status)}>
                           {task.status}
                         </Badge>
+                        <p className="text-xs text-gray-500">
+                          Updated: {new Date(task.latestStatusChangedAt ?? task.assignedAt).toLocaleString("vi-VN", { hour12: false })}
+                        </p>
                         {task.status.toLowerCase() === "collected" && task.collectedWeightKg && (
                           <div className="text-xs text-green-700 font-medium bg-green-50 px-2 py-1 rounded inline-block border border-green-200">
                             Weight: {task.collectedWeightKg} kg
@@ -500,7 +503,7 @@ export const EnterpriseTaskManagement: React.FC = () => {
                     <div className="flex flex-col gap-1">
                       <span className="text-sm font-semibold text-gray-900">{event.status}</span>
                       <span className="text-xs text-gray-500">
-                        {new Date(event.timestamp).toLocaleString()}
+                        {new Date(event.timestamp).toLocaleString("vi-VN", { hour12: false })}
                       </span>
                       {event.details && (
                         <p className="text-sm text-gray-700 mt-1">{event.details}</p>
