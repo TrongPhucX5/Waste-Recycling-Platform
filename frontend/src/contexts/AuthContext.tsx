@@ -91,12 +91,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string,
       role: UserRole,
     ) => {
-      await authApi.register({ fullName, email, password, role });
-      // Redirect to login after successful registration
-      // User should login with their new credentials
-      setTimeout(() => router.push("/login"), 1500);
+      const res = await authApi.register({ fullName, email, password, role });
+      
+      // If enterprise, auto-login and redirect to profile setup
+      if (role === 'enterprise') {
+        const loginRes = await authApi.login({ email, password });
+        persist(loginRes.token, loginRes.user);
+        setTimeout(() => router.push("/enterprise/profile-setup"), 1000);
+      } else {
+        // For citizen/collector, redirect to login
+        setTimeout(() => router.push("/login"), 1500);
+      }
     },
-    [router],
+    [persist, router],
   );
 
   const logout = useCallback(() => {

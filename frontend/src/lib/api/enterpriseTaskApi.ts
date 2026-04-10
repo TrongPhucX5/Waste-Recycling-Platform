@@ -83,7 +83,7 @@ export const enterpriseTaskApi = {
     if (status) params.append("status", status);
     if (unassignedOnly) params.append("unassigned", "true");
     const query = params.toString() ? `?${params.toString()}` : "";
-    return apiClient.get<EnterpriseCollectionTask[]>(`/enterprise/tasks${query}`);
+    return apiClient.get<EnterpriseCollectionTask[]>(`/api/enterprise/tasks${query}`);
   },
 
   /**
@@ -91,7 +91,7 @@ export const enterpriseTaskApi = {
    */
   assignCollector: (taskId: string, collectorId: string) => {
     return apiClient.put<{ message: string; taskId: string; collectorId: string }>(
-      `/enterprise/tasks/${taskId}/assign-collector`,
+      `/api/enterprise/tasks/${taskId}/assign-collector`,
       { collectorId }
     );
   },
@@ -100,14 +100,14 @@ export const enterpriseTaskApi = {
    * Get available collectors for this enterprise
    */
   getAvailableCollectors: () => {
-    return apiClient.get<EnterpriseCollector[]>(`/enterprise/tasks/collectors`);
+    return apiClient.get<EnterpriseCollector[]>(`/api/enterprise/tasks/collectors`);
   },
 
   /**
    * Get statistics for enterprise tasks
    */
   getStats: () => {
-    return apiClient.get<EnterpriseTaskStats>(`/enterprise/tasks/stats`);
+    return apiClient.get<EnterpriseTaskStats>(`/api/enterprise/tasks/stats`);
   },
 
   /**
@@ -120,14 +120,14 @@ export const enterpriseTaskApi = {
       serviceArea: string | null;
       capacityKgPerDay: number | null;
       acceptedWasteTypes: Array<{ wasteCategoryId: number; categoryName: string }>;
-    }>(`/enterprise/tasks/profile`);
+    }>(`/api/enterprise/tasks/profile`);
   },
 
   /**
    * Update enterprise profile fields
    */
   updateProfile: (payload: { serviceArea: string; capacityKgPerDay: number | null }) => {
-    return apiClient.put<{ message: string }>(`/enterprise/tasks/profile`, payload);
+    return apiClient.put<{ message: string }>(`/api/enterprise/tasks/profile`, payload);
   },
 
   /**
@@ -137,20 +137,20 @@ export const enterpriseTaskApi = {
     return apiClient.get<{
       allCategories: Array<{ id: number; name: string }>;
       acceptedIds: number[];
-    }>(`/enterprise/tasks/waste-types`);
+    }>(`/api/enterprise/tasks/waste-types`);
   },
 
   /**
    * Update the list of accepted waste categories for this enterprise
    */
   updateWasteTypes: (payload: { wasteCategoryIds: number[] }) => {
-    return apiClient.put<{ message: string }>(`/enterprise/tasks/waste-types`, payload);
+    return apiClient.put<{ message: string }>(`/api/enterprise/tasks/waste-types`, payload);
   },
 
   /**
    * Get progress/timeline of a specific task
    */
   getTaskProgress: (taskId: string) => {
-    return apiClient.get<TaskProgressResponse>(`/enterprise/tasks/${taskId}/progress`);
+    return apiClient.get<TaskProgressResponse>(`/api/enterprise/tasks/${taskId}/progress`);
   },
 };

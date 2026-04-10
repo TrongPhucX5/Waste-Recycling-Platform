@@ -28,24 +28,24 @@ export interface UpdateEnterpriseCollectorPayload {
 
 export const enterpriseCollectorApi = {
   getCollectors: () => {
-    return apiClient.get<EnterpriseCollectorDto[]>("/enterprise/collectors");
+    return apiClient.get<EnterpriseCollectorDto[]>("/api/enterprise/collectors");
   },
 
   createCollector: (payload: CreateEnterpriseCollectorPayload) => {
     return apiClient.post<{ message: string; collector: EnterpriseCollectorDto }>(
-      "/enterprise/collectors",
+      "/api/enterprise/collectors",
       payload
     );
   },
 
   updateCollector: (collectorId: string, payload: UpdateEnterpriseCollectorPayload) => {
     return apiClient.put<{ message: string; collector: EnterpriseCollectorDto }>(
-      `/enterprise/collectors/${collectorId}`,
+      `/api/enterprise/collectors/${collectorId}`,
       payload
     );
   },
 
   deleteCollector: (collectorId: string) => {
-    return apiClient.delete<{ message: string }>(`/enterprise/collectors/${collectorId}`);
+    return apiClient.delete<{ message: string }>(`/api/enterprise/collectors/${collectorId}`);
   },
 };
