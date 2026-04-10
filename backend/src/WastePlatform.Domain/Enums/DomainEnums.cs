@@ -31,3 +31,12 @@ public enum ComplaintStatus
     Resolved,
     Rejected
 }
+
+public enum NotificationType
+{
+    TaskAssigned,
+    ReportStatusUpdated,
+    RewardPointsReceived,
+    ComplaintStatusUpdated,
+    General
+}

@@ -7,6 +7,8 @@ using WastePlatform.Domain.Enums;
 using WastePlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.SignalR;
 using WastePlatform.API.Hubs;
+using MediatR;
+using WastePlatform.Application.Notifications.Commands;
 
 namespace WastePlatform.API.Controllers;
 
@@ -17,11 +19,13 @@ public class CollectorTaskController : ControllerBase
 {
     private readonly WastePlatformDbContext _context;
     private readonly IHubContext<TaskHub> _hubContext;
+    private readonly IMediator _mediator;
 
-    public CollectorTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext)
+    public CollectorTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext, IMediator mediator)
     {
         _context = context;
         _hubContext = hubContext;
+        _mediator = mediator;
     }
 
     private async Task<Collector?> GetCurrentCollectorAsync()
@@ -260,7 +264,16 @@ public class CollectorTaskController : ControllerBase
             task.WasteReport.Collect();
 
             await _context.SaveChangesAsync();
-            
+
+            // Notify Citizen
+            await _mediator.Send(new SendNotificationCommand(
+                task.WasteReport.CitizenId,
+                "Thu gom hoàn tất",
+                $"Rác tại địa chỉ {task.WasteReport.Address} đã được thu gom thành công. Cảm ơn bạn!",
+                NotificationType.ReportStatusUpdated,
+                task.WasteReport.Id
+            ));
+
             // Phát sóng sự kiện SignalR
             await _hubContext.Clients.All.SendAsync("TaskStatusUpdated", id, CollectionTaskStatus.Collected.ToString());
 
