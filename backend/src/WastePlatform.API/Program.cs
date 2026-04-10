@@ -9,6 +9,8 @@ using WastePlatform.Infrastructure.Services;
 // Thêm thư mục chứa UserRepository (điều chỉnh lại nếu bạn để thư mục khác nhé)
 using WastePlatform.Infrastructure.Persistence.Repositories; 
 using WastePlatform.API.Hubs;
+using WastePlatform.Infrastructure.Hubs;
+using WastePlatform.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,6 +56,7 @@ builder.Services.AddAuthorization(options =>
 // ── Application Services ─────────────────────────────────────────────
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<INotificationRealTimeService, NotificationRealTimeService>();
 
 // 👉 ĐÃ THÊM: Đăng ký UserRepository để chọc xuống Database
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -71,6 +74,7 @@ builder.Services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
 
 // 👉 Repositories for Citizen Module (Rewards & Complaints)
 builder.Services.AddScoped<IRewardPointsRepository, RewardPointsRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
 // Đăng ký MediatR để xử lý CQRS (Queries/Commands)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));
@@ -166,5 +170,6 @@ app.MapControllers();
 
 // Map SignalR Hub
 app.MapHub<TaskHub>("/hubs/task");
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

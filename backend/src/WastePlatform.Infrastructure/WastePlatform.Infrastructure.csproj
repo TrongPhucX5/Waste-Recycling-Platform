@@ -4,6 +4,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- EF Core v9 (latest stable, compatible with net10.0) -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />

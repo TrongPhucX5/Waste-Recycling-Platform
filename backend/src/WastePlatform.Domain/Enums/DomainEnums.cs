@@ -38,3 +38,12 @@ public enum EnterpriseStatus
     Verified,
     Rejected
 }
+
+public enum NotificationType
+{
+    TaskAssigned,
+    ReportStatusUpdated,
+    RewardPointsReceived,
+    ComplaintStatusUpdated,
+    General
+}
