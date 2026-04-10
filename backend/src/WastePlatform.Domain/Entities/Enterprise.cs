@@ -1,4 +1,5 @@
 namespace WastePlatform.Domain.Entities;
+using WastePlatform.Domain.Enums;
 
 public class Enterprise
 {
@@ -7,8 +8,13 @@ public class Enterprise
     public string CompanyName { get; set; } = null!;
     public string? ServiceArea { get; set; } // JSON stored as string
     public int? CapacityKgPerDay { get; set; }
-    public bool IsVerified { get; set; } = false;
+    public EnterpriseStatus Status { get; set; } = EnterpriseStatus.Pending;
+    public string? RejectionReason { get; set; }
+    public bool IsVerified { get; set; } = false; // Keep for backward compatibility
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public string? Address { get; set; }
+    public string? PhoneNumber { get; set; }
 
     // Navigation properties
     public virtual User User { get; set; } = null!;

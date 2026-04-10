@@ -44,5 +44,11 @@ namespace WastePlatform.Infrastructure.Persistence.Repositories
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
         }
+
+        public async Task UpdateAsync(Domain.Entities.Enterprise enterprise, CancellationToken cancellationToken)
+        {
+            _context.Enterprises.Update(enterprise);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
     }
 }

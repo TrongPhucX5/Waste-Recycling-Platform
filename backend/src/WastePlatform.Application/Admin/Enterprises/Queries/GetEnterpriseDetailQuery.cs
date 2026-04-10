@@ -34,6 +34,8 @@ public class GetEnterpriseDetailQueryHandler : IRequestHandler<GetEnterpriseDeta
             CompanyName = enterprise.CompanyName,
             ServiceArea = enterprise.ServiceArea,
             CapacityKgPerDay = enterprise.CapacityKgPerDay,
+            Status = enterprise.Status.ToString(),
+            RejectionReason = enterprise.RejectionReason,
             IsVerified = enterprise.IsVerified,
             CreatedAt = enterprise.CreatedAt,
             CollectorCount = enterprise.Collectors?.Count ?? 0,

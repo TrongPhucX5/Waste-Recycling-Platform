@@ -31,3 +31,10 @@ public enum ComplaintStatus
     Resolved,
     Rejected
 }
+
+public enum EnterpriseStatus
+{
+    Pending,
+    Verified,
+    Rejected
+}

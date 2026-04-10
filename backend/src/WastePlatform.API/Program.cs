@@ -39,7 +39,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireRole:Enterprise", policy =>
+        policy.RequireClaim("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", "Enterprise"));
+    
+    options.AddPolicy("RequireRole:Citizen", policy =>
+        policy.RequireClaim("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", "Citizen"));
+    
+    options.AddPolicy("RequireRole:Admin", policy =>
+        policy.RequireClaim("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", "Admin"));
+});
 
 // ── Application Services ─────────────────────────────────────────────
 builder.Services.AddScoped<IJwtService, JwtService>();

@@ -65,6 +65,8 @@ public class WastePlatformDbContext : DbContext
             entity.Property(e => e.ServiceArea).HasColumnName("service_area").HasMaxLength(500);
             entity.Property(e => e.CapacityKgPerDay).HasColumnName("capacity_kg_per_day");
             entity.Property(e => e.IsVerified).HasColumnName("is_verified");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             
             entity.HasOne(e => e.User)
@@ -73,6 +75,7 @@ public class WastePlatformDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasIndex(e => e.Status);
         });
 
         // Configure WasteCategories

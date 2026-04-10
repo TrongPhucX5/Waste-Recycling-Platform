@@ -1,6 +1,7 @@
 using MediatR;
 using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Application.Admin.Enterprises.Commands;
+using WastePlatform.Domain.Enums;
 
 namespace WastePlatform.Application.Admin.Enterprises.Commands.Handlers;
 
@@ -27,8 +28,13 @@ public class RejectEnterpriseCommandHandler : IRequestHandler<RejectEnterpriseCo
             };
         }
 
-        // Mark enterprise as not verified (rejected)
+        // Mark enterprise as rejected and store rejection reason
+        enterprise.Status = EnterpriseStatus.Rejected;
         enterprise.IsVerified = false;
+        enterprise.RejectionReason = request.ReasonForRejection;
+
+        // Save changes to database
+        await _enterpriseRepository.UpdateAsync(enterprise, cancellationToken);
 
         return new RejectEnterpriseResult
         {
