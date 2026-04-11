@@ -8,6 +8,8 @@ using WastePlatform.Domain.Enums;
 using WastePlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.SignalR;
 using WastePlatform.API.Hubs;
+using MediatR;
+using WastePlatform.Application.Notifications.Commands;
 
 namespace WastePlatform.API.Controllers;
 
@@ -18,22 +20,43 @@ public class EnterpriseTaskController : ControllerBase
 {
     private readonly WastePlatformDbContext _context;
     private readonly IHubContext<TaskHub> _hubContext;
+    private readonly IMediator _mediator;
 
-    public EnterpriseTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext)
+    public EnterpriseTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext, IMediator mediator)
     {
         _context = context;
         _hubContext = hubContext;
+        _mediator = mediator;
     }
 
     private async Task<Enterprise?> GetCurrentEnterpriseAsync()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return null;
+        // Check both NameIdentifier AND "sub" claim
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                         ?? User.FindFirst("sub")?.Value;
 
-        return await _context.Enterprises
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            System.Console.WriteLine($"[ERROR GetCurrentEnterpriseAsync] Failed to parse userId from JWT claim: {userIdClaim}");
+            return null;
+        }
+
+        System.Console.WriteLine($"[GetCurrentEnterpriseAsync] Looking for enterprise with UserId: {userId}");
+
+        var enterprise = await _context.Enterprises
             .Include(e => e.User)
             .FirstOrDefaultAsync(e => e.UserId == userId);
+
+        if (enterprise == null)
+        {
+            System.Console.WriteLine($"[ERROR GetCurrentEnterpriseAsync] No enterprise found for UserId: {userId}");
+        }
+        else
+        {
+            System.Console.WriteLine($"[GetCurrentEnterpriseAsync] Found enterprise: {enterprise.Id}, Name: {enterprise.CompanyName}");
+        }
+
+        return enterprise;
     }
 
     /// <summary>
@@ -163,6 +186,15 @@ public class EnterpriseTaskController : ControllerBase
         {
             task.AssignCollector(request.CollectorId);
             await _context.SaveChangesAsync();
+
+            // Notify Collector using Mediator
+            await _mediator.Send(new SendNotificationCommand(
+                collector.UserId,
+                "Nhiệm vụ mới được phân công",
+                $"Bạn có một nhiệm vụ thu gom mới tại: {task.WasteReport.Address}.",
+                NotificationType.TaskAssigned,
+                task.Id
+            ));
 
             // Phát sóng sự kiện SignalR tới toàn bộ Client
             await _hubContext.Clients.All.SendAsync("TaskStatusUpdated", id, CollectionTaskStatus.Assigned.ToString());
@@ -436,10 +468,17 @@ public class EnterpriseTaskController : ControllerBase
 
         if (!isAdmin && enterprise != null)
         {
+            System.Console.WriteLine($"[GetStats] Filtering stats for enterprise: {enterprise.Id}");
             query = query.Where(t => t.EnterpriseId == enterprise.Id);
+        }
+        else if (isAdmin)
+        {
+            System.Console.WriteLine($"[GetStats] Admin requesting - showing all system stats");
         }
 
         var tasks = await query.Include(t => t.WasteReport).ToListAsync();
+
+        System.Console.WriteLine($"[GetStats] Total tasks retrieved: {tasks.Count}");
 
         var totalUnassigned = tasks.Count(t => t.CollectorId == null);
         var totalAssigned = tasks.Count(t => t.Status == CollectionTaskStatus.Assigned);
@@ -485,7 +524,7 @@ public class EnterpriseTaskController : ControllerBase
 
         if (!isAdmin && enterprise != null)
         {
-            taskQuery = taskQuery.Where(t => t.EnterpriseId == enterprise.Id);
+            taskQuery = taskQuery.Where(t => t.EnterpriseId == enterprise!.Id);
         }
 
         var task = await taskQuery.FirstOrDefaultAsync();

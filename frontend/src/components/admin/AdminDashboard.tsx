@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import {
-  LayoutDashboard,
   Users,
   FileText,
   Truck,
@@ -12,30 +11,32 @@ import {
   Menu,
   X,
   BarChart3,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { SystemActivity } from "./SystemActivity";
 import { WasteAnalytics } from "./WasteAnalytics";
 import { UserManagement } from "./UserManagement";
 import { ReportsManagement } from "./ReportsManagement";
 import { CollectionTasks } from "./CollectionTasks";
 import { DisputesManagement } from "./DisputesManagement";
+import { EnterpriseManagement } from "./EnterpriseManagement";
+import { settingsApi, SystemSettings } from "@/lib/api/settingsApi";
 
-type Tab = "dashboard" | "analytics" | "users" | "reports" | "tasks" | "disputes" | "settings";
+type Tab = "analytics" | "users" | "reports" | "tasks" | "disputes" | "enterprises" | "settings";
 
 export const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [activeTab, setActiveTab] = useState<Tab>("analytics");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const tabs = [
-    { id: "dashboard" as Tab, label: "Tổng Quan", icon: LayoutDashboard },
     { id: "analytics" as Tab, label: "Thống Kê Rác", icon: BarChart3 },
     { id: "reports" as Tab, label: "Quản Lý Báo Cáo", icon: FileText },
     { id: "tasks" as Tab, label: "Quản Lý Thu Gom", icon: Truck },
     { id: "disputes" as Tab, label: "Khiếu Nại", icon: AlertCircle },
+    { id: "enterprises" as Tab, label: "Quản Lý Doanh Nghiệp", icon: Building2 },
     { id: "users" as Tab, label: "Quản Lý Người Dùng", icon: Users },
     { id: "settings" as Tab, label: "Cài Đặt", icon: Settings },
   ];
@@ -47,8 +48,6 @@ export const AdminDashboard: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "dashboard":
-        return <SystemActivity />;
       case "analytics":
         return <WasteAnalytics />;
       case "reports":
@@ -57,12 +56,14 @@ export const AdminDashboard: React.FC = () => {
         return <CollectionTasks />;
       case "disputes":
         return <DisputesManagement />;
+      case "enterprises":
+        return <EnterpriseManagement />;
       case "users":
         return <UserManagement />;
       case "settings":
         return <SettingsPage />;
       default:
-        return <SystemActivity />;
+        return <WasteAnalytics />;
     }
   };
 
@@ -181,12 +182,114 @@ export const AdminDashboard: React.FC = () => {
 
 // Settings Page Component
 const SettingsPage: React.FC = () => {
+  const [settings, setSettings] = React.useState<SystemSettings>({
+    systemName: '',
+    supportEmail: '',
+    supportPhone: '',
+    pointsPerValidReport: 0,
+    pointsForCorrectClassification: 0,
+    pointsForFastProcessing: 0,
+  });
+
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [message, setMessage] = React.useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Fetch settings on mount
+  React.useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setLoading(true);
+        const data = await settingsApi.getSettings();
+        setSettings(data);
+      } catch (err) {
+        setMessage({
+          type: 'error',
+          text: 'Không thể tải cài đặt hệ thống',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
+  // Handle input changes
+  const handleChange = (field: keyof SystemSettings, value: string | number) => {
+    setSettings(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // Save general settings
+  const handleSaveGeneral = async () => {
+    setSaving(true);
+    try {
+      await settingsApi.updateSettings(settings);
+      setMessage({
+        type: 'success',
+        text: 'Lưu cài đặt chung thành công',
+      });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: 'Lỗi khi lưu cài đặt chung',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save points settings
+  const handleSavePoints = async () => {
+    setSaving(true);
+    try {
+      await settingsApi.updateSettings(settings);
+      setMessage({
+        type: 'success',
+        text: 'Cập nhật quy tắc điểm thành công',
+      });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: 'Lỗi khi cập nhật quy tắc điểm',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-gray-500">Đang tải cài đặt...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Cài Đặt Hệ Thống</h1>
         <p className="text-gray-600 mt-2">Quản lý cấu hình và quy tắc hệ thống</p>
       </div>
+
+      {/* Message Alert */}
+      {message && (
+        <div
+          className={`p-4 rounded-lg ${
+            message.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* General Settings */}
@@ -199,7 +302,8 @@ const SettingsPage: React.FC = () => {
             </label>
             <input
               type="text"
-              defaultValue="CWCRP Platform"
+              value={settings.systemName}
+              onChange={(e) => handleChange('systemName', e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
             />
           </div>
@@ -210,7 +314,8 @@ const SettingsPage: React.FC = () => {
             </label>
             <input
               type="email"
-              defaultValue="support@cwcrp.com"
+              value={settings.supportEmail}
+              onChange={(e) => handleChange('supportEmail', e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
             />
           </div>
@@ -221,13 +326,18 @@ const SettingsPage: React.FC = () => {
             </label>
             <input
               type="tel"
-              defaultValue="+84 123 456 789"
+              value={settings.supportPhone}
+              onChange={(e) => handleChange('supportPhone', e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
             />
           </div>
 
-          <button className="w-full py-2.5 bg-[#0AA468] hover:bg-[#088F5A] text-white font-bold rounded-lg transition-all">
-            Lưu Thay Đổi
+          <button
+            onClick={handleSaveGeneral}
+            disabled={saving}
+            className="w-full py-2.5 bg-[#0AA468] hover:bg-[#088F5A] disabled:opacity-50 text-white font-bold rounded-lg transition-all"
+          >
+            {saving ? 'Đang lưu...' : 'Lưu Thay Đổi'}
           </button>
         </div>
 
@@ -241,7 +351,9 @@ const SettingsPage: React.FC = () => {
             </label>
             <input
               type="number"
-              defaultValue="30"
+              min="0"
+              value={settings.pointsPerValidReport}
+              onChange={(e) => handleChange('pointsPerValidReport', parseInt(e.target.value) || 0)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
             />
           </div>
@@ -252,7 +364,9 @@ const SettingsPage: React.FC = () => {
             </label>
             <input
               type="number"
-              defaultValue="20"
+              min="0"
+              value={settings.pointsForCorrectClassification}
+              onChange={(e) => handleChange('pointsForCorrectClassification', parseInt(e.target.value) || 0)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
             />
           </div>
@@ -263,13 +377,19 @@ const SettingsPage: React.FC = () => {
             </label>
             <input
               type="number"
-              defaultValue="10"
+              min="0"
+              value={settings.pointsForFastProcessing}
+              onChange={(e) => handleChange('pointsForFastProcessing', parseInt(e.target.value) || 0)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
             />
           </div>
 
-          <button className="w-full py-2.5 bg-[#0AA468] hover:bg-[#088F5A] text-white font-bold rounded-lg transition-all">
-            Cập Nhật Quy Tắc
+          <button
+            onClick={handleSavePoints}
+            disabled={saving}
+            className="w-full py-2.5 bg-[#0AA468] hover:bg-[#088F5A] disabled:opacity-50 text-white font-bold rounded-lg transition-all"
+          >
+            {saving ? 'Đang lưu...' : 'Cập Nhật Quy Tắc'}
           </button>
         </div>
       </div>

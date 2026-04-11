@@ -1,6 +1,7 @@
 using MediatR;
 using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Application.Admin.Enterprises.Commands;
+using WastePlatform.Domain.Enums;
 
 namespace WastePlatform.Application.Admin.Enterprises.Commands.Handlers;
 
@@ -27,7 +28,7 @@ public class VerifyEnterpriseCommandHandler : IRequestHandler<VerifyEnterpriseCo
             };
         }
 
-        if (enterprise.IsVerified)
+        if (enterprise.Status == EnterpriseStatus.Verified)
         {
             return new VerifyEnterpriseResult
             {
@@ -37,7 +38,13 @@ public class VerifyEnterpriseCommandHandler : IRequestHandler<VerifyEnterpriseCo
             };
         }
 
+        // Update status and maintain backward compatibility
+        enterprise.Status = EnterpriseStatus.Verified;
         enterprise.IsVerified = true;
+        enterprise.RejectionReason = null;
+
+        // Save changes to database
+        await _enterpriseRepository.UpdateAsync(enterprise, cancellationToken);
 
         return new VerifyEnterpriseResult
         {

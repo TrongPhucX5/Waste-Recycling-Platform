@@ -9,6 +9,7 @@ using WastePlatform.Application.Reports.Queries;
 using WastePlatform.Domain.Entities;
 using WastePlatform.Domain.Enums;
 using WastePlatform.Infrastructure.Persistence;
+using WastePlatform.Application.Notifications.Commands;
 
 namespace WastePlatform.API.Controllers;
 
@@ -242,6 +243,15 @@ public class ReportController : ControllerBase
             _context.WasteReports.Update(report);
             await _context.SaveChangesAsync();
 
+            // Notify Citizen
+            await _mediator.Send(new SendNotificationCommand(
+                report.CitizenId,
+                "Báo cáo đã được chấp nhận",
+                "Báo cáo rác của bạn đã được chấp nhận và đang được điều phối thu gom.",
+                NotificationType.ReportStatusUpdated,
+                report.Id
+            ));
+
             return Ok(new
             {
                 message = "Report accepted successfully",
@@ -287,6 +297,15 @@ public class ReportController : ControllerBase
 
             _context.WasteReports.Update(report);
             await _context.SaveChangesAsync();
+
+            // Notify Citizen
+            await _mediator.Send(new SendNotificationCommand(
+                report.CitizenId,
+                "Báo cáo bị từ chối",
+                $"Báo cáo rác của bạn đã bị từ chối. Lý do: {request?.Reason ?? "Không có lý do cụ thể"}",
+                NotificationType.ReportStatusUpdated,
+                report.Id
+            ));
 
             return Ok(new
             {

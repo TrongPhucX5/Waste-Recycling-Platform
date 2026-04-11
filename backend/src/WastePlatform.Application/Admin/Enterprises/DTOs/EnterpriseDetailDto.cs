@@ -9,6 +9,8 @@ public class EnterpriseDetailDto
     public string CompanyName { get; set; } = null!;
     public string? ServiceArea { get; set; }
     public int? CapacityKgPerDay { get; set; }
+    public string Status { get; set; } = "Pending"; // Pending, Verified, Rejected
+    public string? RejectionReason { get; set; }
     public bool IsVerified { get; set; }
     public DateTime CreatedAt { get; set; }
     public int CollectorCount { get; set; }
@@ -21,6 +23,8 @@ public class EnterpriseListDto
     public string CompanyName { get; set; } = null!;
     public string? UserEmail { get; set; }
     public string? ServiceArea { get; set; }
+    public string Status { get; set; } = "Pending"; // Pending, Verified, Rejected
+    public string? RejectionReason { get; set; }
     public bool IsVerified { get; set; }
     public DateTime CreatedAt { get; set; }
 }

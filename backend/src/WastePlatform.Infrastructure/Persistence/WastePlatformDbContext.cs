@@ -25,6 +25,7 @@ public class WastePlatformDbContext : DbContext
     public DbSet<RewardPoints> RewardPoints { get; set; } = null!;
     public DbSet<Complaint> Complaints { get; set; } = null!;
     public DbSet<AuditLog> AuditLogs { get; set; } = null!;
+    public DbSet<Notification> Notifications { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -65,6 +66,8 @@ public class WastePlatformDbContext : DbContext
             entity.Property(e => e.ServiceArea).HasColumnName("service_area").HasMaxLength(500);
             entity.Property(e => e.CapacityKgPerDay).HasColumnName("capacity_kg_per_day");
             entity.Property(e => e.IsVerified).HasColumnName("is_verified");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             
             entity.HasOne(e => e.User)
@@ -73,6 +76,7 @@ public class WastePlatformDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasIndex(e => e.Status);
         });
 
         // Configure WasteCategories
@@ -355,6 +359,30 @@ public class WastePlatformDbContext : DbContext
 
             entity.HasIndex(e => new { e.UserId, e.CreatedAt });
             entity.HasIndex(e => new { e.EntityType, e.EntityId });
+        });
+
+        // Configure Notifications
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("notifications");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Title).HasColumnName("title").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Message).HasColumnName("message").IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Type).HasColumnName("type").HasConversion<string>();
+            entity.Property(e => e.RelatedEntityId).HasColumnName("related_entity_id");
+            entity.Property(e => e.IsRead).HasColumnName("is_read");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.IsRead);
         });
     }
 }

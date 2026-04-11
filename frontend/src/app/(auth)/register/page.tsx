@@ -44,6 +44,13 @@ const RegisterPage = () => {
         try {
           await register(values.name, values.email, values.password, values.role);
           setSuccessMsg("Đăng ký thành công! Đang chuyển hướng...");
+          // Reset form values to initial state
+          Object.keys(values).forEach(key => {
+            const event = {
+              target: { name: key, value: key === "role" ? "citizen" : "" }
+            } as any;
+            handleChange(event);
+          });
         } catch (err) {
           if (err instanceof ApiError) {
             if (err.status === 409) {

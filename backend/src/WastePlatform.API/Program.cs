@@ -9,6 +9,8 @@ using WastePlatform.Infrastructure.Services;
 // Thêm thư mục chứa UserRepository (điều chỉnh lại nếu bạn để thư mục khác nhé)
 using WastePlatform.Infrastructure.Persistence.Repositories; 
 using WastePlatform.API.Hubs;
+using WastePlatform.Infrastructure.Hubs;
+using WastePlatform.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,11 +41,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireRole:Enterprise", policy =>
+        policy.RequireClaim("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", "Enterprise"));
+    
+    options.AddPolicy("RequireRole:Citizen", policy =>
+        policy.RequireClaim("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", "Citizen"));
+    
+    options.AddPolicy("RequireRole:Admin", policy =>
+        policy.RequireClaim("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", "Admin"));
+});
 
 // ── Application Services ─────────────────────────────────────────────
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<INotificationRealTimeService, NotificationRealTimeService>();
 
 // 👉 ĐÃ THÊM: Đăng ký UserRepository để chọc xuống Database
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -61,6 +74,7 @@ builder.Services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
 
 // 👉 Repositories for Citizen Module (Rewards & Complaints)
 builder.Services.AddScoped<IRewardPointsRepository, RewardPointsRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
 // Đăng ký MediatR để xử lý CQRS (Queries/Commands)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));
@@ -156,5 +170,6 @@ app.MapControllers();
 
 // Map SignalR Hub
 app.MapHub<TaskHub>("/hubs/task");
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

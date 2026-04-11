@@ -52,6 +52,8 @@ public class GetEnterprisesQueryHandler : IRequestHandler<GetEnterprisesQuery, (
             CompanyName = e.CompanyName,
             UserEmail = "N/A",
             ServiceArea = e.ServiceArea,
+            Status = e.Status.ToString(),
+            RejectionReason = e.RejectionReason,
             IsVerified = e.IsVerified,
             CreatedAt = e.CreatedAt
         }).ToList();

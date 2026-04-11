@@ -31,3 +31,19 @@ public enum ComplaintStatus
     Resolved,
     Rejected
 }
+
+public enum EnterpriseStatus
+{
+    Pending,
+    Verified,
+    Rejected
+}
+
+public enum NotificationType
+{
+    TaskAssigned,
+    ReportStatusUpdated,
+    RewardPointsReceived,
+    ComplaintStatusUpdated,
+    General
+}

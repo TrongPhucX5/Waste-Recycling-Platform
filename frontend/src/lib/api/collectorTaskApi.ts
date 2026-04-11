@@ -1,7 +1,5 @@
 import { ApiError, apiClient } from "./client";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
-
 export interface TaskReport {
   id: string;
   description: string;
@@ -40,21 +38,21 @@ export const collectorTaskApi = {
    */
   getTasks: (status?: string) => {
     const query = status ? `?status=${status}` : "";
-    return apiClient.get<CollectionTask[]>(`/collector/tasks${query}`);
+    return apiClient.get<CollectionTask[]>(`/api/collector/tasks${query}`);
   },
 
   /**
    * WRP-109: Fetch task detail by ID
    */
   getTaskById: (id: string) => {
-    return apiClient.get<any>(`/collector/tasks/${id}`);
+    return apiClient.get<any>(`/api/collector/tasks/${id}`);
   },
 
   /**
    * Update task status to "OnTheWay"
    */
   setOnTheWay: (id: string) => {
-    return apiClient.put<{ message: string; taskId: string }>(`/collector/tasks/${id}/on-the-way`, {});
+    return apiClient.put<{ message: string; taskId: string }>(`/api/collector/tasks/${id}/on-the-way`, {});
   },
 
   /**
@@ -62,12 +60,13 @@ export const collectorTaskApi = {
    */
   completeTask: async (id: string, formData: FormData) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
     const headers: HeadersInit = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    const res = await fetch(`${API_BASE_URL}/collector/tasks/${id}/complete`, {
+    const res = await fetch(`${API_BASE_URL}/api/collector/tasks/${id}/complete`, {
       method: "PUT",
       headers,
       body: formData,
@@ -96,6 +95,6 @@ export const collectorTaskApi = {
    * Fetches statistics for the dashboard
    */
   getStats: () => {
-    return apiClient.get<CollectorStats>("/collector/tasks/stats");
+    return apiClient.get<CollectorStats>("/api/collector/tasks/stats");
   }
 };
