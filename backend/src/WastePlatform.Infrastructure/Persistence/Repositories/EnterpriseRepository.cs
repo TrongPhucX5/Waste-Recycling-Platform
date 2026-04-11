@@ -44,5 +44,14 @@ namespace WastePlatform.Infrastructure.Persistence.Repositories
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
         }
+
+        public async Task<List<Domain.Entities.Enterprise>> GetEnterprisesByWasteCategoryAsync(int wasteCategoryId, CancellationToken cancellationToken)
+        {
+            return await _context.Enterprises
+                .AsNoTracking()
+                .Include(e => e.WasteTypes)
+                .Where(e => e.WasteTypes.Any(wt => wt.WasteCategoryId == wasteCategoryId))
+                .ToListAsync(cancellationToken);
+        }
     }
 }

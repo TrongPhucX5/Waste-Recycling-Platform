@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { PlusCircle, FileText, Trophy, TrendingUp, Clock, CheckCircle, Camera, MapPin, Users, Award, Target, Crown, Medal } from "lucide-react";
+import { PlusCircle, FileText, Trophy, TrendingUp, Clock, CheckCircle, Camera, MapPin, Users, Award, Target, Crown, Medal, AlertCircle } from "lucide-react";
 
 interface RecentReport {
   id: string;
@@ -158,6 +158,16 @@ export default function CitizenDashboardPage() {
                 <FileText className="w-6 h-6 text-blue-600" />
               </div>
               <span className="text-sm font-medium text-gray-700 text-center">Xem lịch sử</span>
+            </Link>
+
+            <Link
+              href="/citizen/reports"
+              className="flex flex-col items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-red-50 hover:border-red-300 transition-colors group"
+            >
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center group-hover:bg-red-200 transition-colors">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-700 text-center">Khiếu Nại</span>
             </Link>
 
             <Link

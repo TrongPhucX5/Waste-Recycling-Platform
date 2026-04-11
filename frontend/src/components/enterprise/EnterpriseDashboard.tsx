@@ -10,6 +10,7 @@ import {
   ChartColumnBig,
   Settings,
   History,
+  MessageSquare,
 } from "lucide-react";
 import { reportApi } from "../../lib/api/reportApi";
 import {
@@ -36,6 +37,7 @@ import { EnterpriseWasteAnalytics } from "./EnterpriseWasteAnalytics";
 import { ProfileSettings } from "./ProfileSettings";
 import { EnterpriseHistoryTable } from "./EnterpriseHistoryTable";
 import { EnterpriseRequest } from "./types";
+import { EnterpriseComplaints } from "./EnterpriseComplaints";
 
 interface EnterpriseDashboardProps {
   initialTab?: string;
@@ -278,6 +280,12 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
       description: "Track waste statistics by area, type, and time trends",
     },
     {
+      id: "complaints",
+      label: "Khiếu Nại",
+      icon: MessageSquare,
+      description: "Xem và xử lý khiếu nại người dân",
+    },
+    {
       id: "rewards",
       label: "Reward Rules",
       icon: Trophy,
@@ -397,6 +405,7 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
         )}
 
         {activeTab === "analytics" && <EnterpriseWasteAnalytics />}
+        {activeTab === "complaints" && <EnterpriseComplaints />}
 
         {activeTab === "rewards" && (
           <RewardConfiguration

@@ -8,5 +8,6 @@ namespace WastePlatform.Application.Common.Interfaces
         Task<EnterpriseDto?> GetEnterpriseByUserIdAsync(Guid userId, CancellationToken cancellationToken);
         Task<global::WastePlatform.Domain.Entities.Enterprise?> GetEnterpriseByIdAsync(string enterpriseId, CancellationToken cancellationToken);
         Task<List<global::WastePlatform.Domain.Entities.Enterprise>> GetEnterpriseListAsync(CancellationToken cancellationToken);
+            Task<List<global::WastePlatform.Domain.Entities.Enterprise>> GetEnterprisesByWasteCategoryAsync(int wasteCategoryId, CancellationToken cancellationToken);
     }
 }

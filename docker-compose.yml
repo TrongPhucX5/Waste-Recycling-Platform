@@ -13,7 +13,7 @@ services:
       MYSQL_USER: ${MYSQL_USER:-wasteuser}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wastepassword}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db/migrations:/docker-entrypoint-initdb.d

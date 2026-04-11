@@ -23,6 +23,8 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 
 export const ReportList: React.FC = () => {
   const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null);
+  const [feedbackTexts, setFeedbackTexts] = useState<Record<string, string>>({});
+  const [sendingFeedback, setSendingFeedback] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [reports, setReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -139,10 +141,38 @@ export const ReportList: React.FC = () => {
                     className="w-full text-sm rounded-lg border-gray-200 border p-3 focus:ring-2 focus:ring-red-500 outline-none resize-none bg-white"
                     rows={2}
                     placeholder="Ví dụ: Người thu gom đến trễ hơn cam kết, thái độ không tốt..."
+                    value={feedbackTexts[report.id] || ""}
+                    onChange={(e) => setFeedbackTexts({ ...feedbackTexts, [report.id]: e.target.value })}
                   ></textarea>
                   <div className="flex justify-end gap-2 mt-3">
                     <button onClick={() => setFeedbackOpen(null)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Hủy</button>
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm shadow-red-500/30">Gửi Phản Hồi</button>
+                    <button
+                      disabled={sendingFeedback}
+                      onClick={async () => {
+                        const content = (feedbackTexts[report.id] || "").trim();
+                        if (!content) {
+                          alert("Vui lòng nhập nội dung khiếu nại.");
+                          return;
+                        }
+
+                        try {
+                          setSendingFeedback(true);
+                          await reportApi.createComplaint(report.id, content);
+                          alert("Đã gửi khiếu nại thành công. Admin/Doanh nghiệp sẽ xem xét.");
+                          setFeedbackOpen(null);
+                          setFeedbackTexts({ ...feedbackTexts, [report.id]: "" });
+                          loadReports();
+                        } catch (err: any) {
+                          console.error("Lỗi gửi khiếu nại:", err);
+                          alert("Gửi khiếu nại thất bại. Vui lòng thử lại.");
+                        } finally {
+                          setSendingFeedback(false);
+                        }
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm shadow-red-500/30 disabled:opacity-60"
+                    >
+                      {sendingFeedback ? "Đang gửi..." : "Gửi Phản Hồi"}
+                    </button>
                   </div>
                 </div>
               )}

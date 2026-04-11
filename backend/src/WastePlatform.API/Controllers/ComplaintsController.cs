@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Mvc;
 using WastePlatform.Application.Complaints.Commands;
 using WastePlatform.Application.Complaints.Queries;
@@ -15,10 +16,14 @@ namespace WastePlatform.API.Controllers;
 public class ComplaintsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly Microsoft.AspNetCore.SignalR.IHubContext<WastePlatform.API.Hubs.TaskHub> _hubContext;
+    private readonly WastePlatform.Application.Common.Interfaces.IEnterpriseRepository _enterpriseRepository;
 
-    public ComplaintsController(IMediator mediator)
+    public ComplaintsController(IMediator mediator, Microsoft.AspNetCore.SignalR.IHubContext<WastePlatform.API.Hubs.TaskHub> hubContext, WastePlatform.Application.Common.Interfaces.IEnterpriseRepository enterpriseRepository)
     {
         _mediator = mediator;
+        _hubContext = hubContext;
+        _enterpriseRepository = enterpriseRepository;
     }
 
     /// <summary>Create a new complaint</summary>
@@ -42,6 +47,62 @@ public class ComplaintsController : ControllerBase
             });
 
             var complaint = await _mediator.Send(new GetComplaintByIdQuery { Id = complaintId });
+
+            // Notify Admins and Enterprises about the new complaint (best-effort)
+            try
+            {
+                var payload = new {
+                    id = complaintId,
+                    reportId = complaint?.ReportId,
+                    content = complaint?.Content,
+                    citizen = complaint?.CitizenName,
+                    createdAt = complaint?.CreatedAt
+                };
+
+                // Notify Admins
+                await _hubContext.Clients.Group("Admins").SendAsync("NewComplaint", payload);
+
+                // Try to target enterprises that handle the report's waste category
+                try
+                {
+                    if (complaint?.ReportId != null)
+                    {
+                        var report = await _mediator.Send(new WastePlatform.Application.Reports.Queries.GetReportByIdQuery { Id = complaint.ReportId.Value });
+                        if (report != null && report.WasteCategoryId.HasValue)
+                        {
+                            var matchingEnterprises = await _enterpriseRepository.GetEnterprisesByWasteCategoryAsync(report.WasteCategoryId.Value, HttpContext.RequestAborted);
+                            if (matchingEnterprises != null && matchingEnterprises.Any())
+                            {
+                                foreach (var en in matchingEnterprises)
+                                {
+                                    await _hubContext.Clients.Group($"Enterprise-{en.Id}").SendAsync("NewComplaint", payload);
+                                }
+                            }
+                            else
+                            {
+                                // Fallback broadcast to all enterprises
+                                await _hubContext.Clients.Group("Enterprises").SendAsync("NewComplaint", payload);
+                            }
+                        }
+                        else
+                        {
+                            await _hubContext.Clients.Group("Enterprises").SendAsync("NewComplaint", payload);
+                        }
+                    }
+                    else
+                    {
+                        await _hubContext.Clients.Group("Enterprises").SendAsync("NewComplaint", payload);
+                    }
+                }
+                catch
+                {
+                    // best-effort: don't fail complaint creation if notifications fail
+                }
+            }
+            catch
+            {
+                // don't fail the request if hub notify fails
+            }
 
             return CreatedAtAction(nameof(GetComplaintDetail), new { id = complaintId }, new
             {

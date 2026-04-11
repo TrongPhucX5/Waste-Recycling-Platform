@@ -124,4 +124,33 @@ export const reportApi = {
       }>;
     }>(`/reports/enterprise/available${query}`);
   },
+
+  /**
+   * Create a complaint (feedback) related to a report by the current citizen
+   * @param reportId optional report id
+   * @param content complaint content
+   */
+  createComplaint: (reportId: string | null, content: string) => {
+    return apiClient.post<{
+      message: string;
+      data: any;
+    }>(`/complaints`, { reportId: reportId || undefined, content });
+  },
+
+  // Enterprise complaint endpoints
+  getEnterpriseComplaints: (page = 1, pageSize = 20, status?: string) => {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('pageSize', pageSize.toString());
+    if (status) params.append('status', status);
+    return apiClient.get<{ message: string; data: any[]; pagination?: any }>(`/enterprise/complaints?${params.toString()}`);
+  },
+
+  enterpriseResolveComplaint: (id: string, adminResponse: string) => {
+    return apiClient.post<{ message: string; complaintId: string }>(`/enterprise/complaints/${id}/resolve`, { adminResponse });
+  },
+
+  enterpriseRejectComplaint: (id: string, adminResponse: string) => {
+    return apiClient.post<{ message: string; complaintId: string }>(`/enterprise/complaints/${id}/reject`, { adminResponse });
+  },
 };
