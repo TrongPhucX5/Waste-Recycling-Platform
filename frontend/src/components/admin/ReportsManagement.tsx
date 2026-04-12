@@ -1,6 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Eye, X, Check, XCircle, AlertCircle } from "lucide-react";
+import { Search, MapPin, Eye, X, Check, XCircle, AlertCircle, FileText, User, MessageSquare } from "lucide-react";
+import { ImageGallery } from "../shared/ImageGallery";
+import { ConfirmationModal, useConfirmation } from "../shared/ConfirmationModal";
+import { ToastContainer, useToast } from "../shared/Toast";
+import { Portal } from "../shared/Portal";
 
 interface Report {
   id: string;
@@ -23,6 +27,14 @@ export const ReportsManagement: React.FC = () => {
   
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // Image gallery state
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  
+  // Modal hooks
+  const modal = useConfirmation();
+  const toast = useToast();
 
   // 1. GỌI API LẤY DANH SÁCH BÁO CÁO
   const fetchReports = async () => {
@@ -61,7 +73,7 @@ export const ReportsManagement: React.FC = () => {
         wasteType: item.categoryName || "Khác",
         status: mapStatus(item.status),
         description: item.description || "Chưa có mô tả chi tiết.",
-        images: [],
+        images: item.reportImages?.map((img: any) => img.imageUrl) || [],
         createdAt: new Date(item.createdAt).toLocaleString("vi-VN"),
         points: item.points || 0,
       }));
@@ -78,60 +90,94 @@ export const ReportsManagement: React.FC = () => {
     fetchReports();
   }, []);
 
-  // 2. HÀM XỬ LÝ DUYỆT / TỪ CHỐI BÁO CÁO ĐÃ FIX GỬI BODY
+  // 2. HÀM XỬ LÝ DUYỆT / TỪ CHỐI BÁO CÁO
   const handleReportAction = async (reportId: string, action: "accept" | "reject") => {
-    let requestBody = null;
-
     if (action === "reject") {
-      // Hỏi lý do nếu là từ chối
-      const reason = window.prompt("Vui lòng nhập lý do từ chối báo cáo này:");
-      if (reason === null) return; // User bấm Cancel thì hủy
-      if (reason.trim() === "") {
-        alert("Bạn phải nhập lý do từ chối!");
-        return;
-      }
-      requestBody = JSON.stringify({ reason: reason });
+      const reason = await modal.prompt({
+        title: "Từ Chối Báo Cáo",
+        message: "Vui lòng nhập lý do từ chối báo cáo này:",
+        placeholder: "Vd: Ảnh không rõ, vị trí không chính xác...",
+        confirmText: "Từ Chối",
+        cancelText: "Hủy",
+      });
+      
+      if (reason === null) return;
+      
+      await executeRejectAction(reportId, reason);
     } else {
-      if (!window.confirm("Bạn có chắc chắn muốn DUYỆT báo cáo này?")) return;
+      const confirmed = await modal.confirm({
+        title: "Xác Nhận Duyệt Báo Cáo",
+        message: "Bạn có chắc chắn muốn duyệt báo cáo này không?",
+        type: "confirm",
+        confirmText: "Duyệt",
+        cancelText: "Hủy",
+      });
+      
+      if (confirmed) {
+        await executeApproveAction(reportId);
+      }
     }
+  };
 
+  const executeApproveAction = async (reportId: string) => {
     try {
       setActionLoading(true);
       const token = localStorage.getItem("token") || "";
-      const url = `http://localhost:8080/api/reports/${reportId}/${action}`;
+      const url = `http://localhost:8080/api/reports/${reportId}/accept`;
 
-      const options: RequestInit = {
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Accept": "*/*",
         }
-      };
-
-      // Nếu có body (Dành cho Reject) thì thêm Content-Type và body vào request
-      if (requestBody) {
-        options.headers = {
-          ...options.headers,
-          "Content-Type": "application/json"
-        };
-        options.body = requestBody;
-      }
-
-      const response = await fetch(url, options);
+      });
 
       if (response.ok) {
-        alert("Thao tác thành công!");
-        setSelectedReport(null); 
-        fetchReports(); 
+        toast.success("Báo cáo đã được duyệt thành công!");
+        setSelectedReport(null);
+        fetchReports();
       } else if (response.status === 403) {
-        // Bắt luôn lỗi 403 để báo cho ông biết
-        alert("Lỗi 403 Forbidden: Tài khoản Admin chưa được cấp quyền gọi API này. Hãy kiểm tra [Authorize] trong C#!");
+        toast.error("Lỗi 403: Tài khoản Admin chưa được cấp quyền!");
       } else {
-        alert("Thao tác thất bại, API báo lỗi: " + response.status);
+        toast.error(`Thao tác thất bại (Lỗi ${response.status})`);
       }
     } catch (error) {
       console.error("Lỗi:", error);
-      alert("Có lỗi xảy ra khi gọi API!");
+      toast.error("Có lỗi xảy ra khi gọi API!");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const executeRejectAction = async (reportId: string, reason: string) => {
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem("token") || "";
+      const url = `http://localhost:8080/api/reports/${reportId}/reject`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Accept": "*/*",
+        },
+        body: JSON.stringify({ reason })
+      });
+
+      if (response.ok) {
+        toast.success("Báo cáo đã được từ chối!");
+        setSelectedReport(null);
+        fetchReports();
+      } else if (response.status === 403) {
+        toast.error("Lỗi 403: Tài khoản Admin chưa được cấp quyền!");
+      } else {
+        toast.error(`Thao tác thất bại (Lỗi ${response.status})`);
+      }
+    } catch (error) {
+      console.error("Lỗi:", error);
+      toast.error("Có lỗi xảy ra khi gọi API!");
     } finally {
       setActionLoading(false);
     }
@@ -139,12 +185,12 @@ export const ReportsManagement: React.FC = () => {
 
   const getStatusStyle = (status: string) => {
     const s = status.toLowerCase();
-    if (s === "pending") return { color: "bg-yellow-100 text-yellow-700 border-yellow-300", label: "Chờ Xử Lý" };
-    if (s === "accepted") return { color: "bg-blue-100 text-blue-700 border-blue-300", label: "Đã Duyệt" };
-    if (s === "rejected") return { color: "bg-red-100 text-red-700 border-red-300", label: "Từ Chối" };
-    if (s === "assigned") return { color: "bg-purple-100 text-purple-700 border-purple-300", label: "Đã Giao" };
-    if (s === "collected") return { color: "bg-green-100 text-green-700 border-green-300", label: "Hoàn Thành" };
-    return { color: "bg-gray-100 text-gray-700 border-gray-300", label: status };
+    if (s === "pending") return { color: "bg-amber-100 text-amber-700 border-amber-200", label: "Chờ Xử Lý" };
+    if (s === "accepted") return { color: "bg-blue-100 text-blue-700 border-blue-200", label: "Đã Duyệt" };
+    if (s === "rejected") return { color: "bg-red-100 text-red-700 border-red-200", label: "Từ Chối" };
+    if (s === "assigned") return { color: "bg-purple-100 text-purple-700 border-purple-200", label: "Đã Giao" };
+    if (s === "collected") return { color: "bg-emerald-100 text-emerald-700 border-emerald-200", label: "Hoàn Thành" };
+    return { color: "bg-gray-100 text-gray-700 border-gray-200", label: status };
   };
 
   const filteredReports = reports.filter((report) => {
@@ -157,96 +203,108 @@ export const ReportsManagement: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6 relative">
-      {/* Header & Filter giữ nguyên */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Quản Lý Báo Cáo</h1>
-        <p className="text-gray-600 mt-2">Duyệt và quản lý báo cáo rác thải từ người dân</p>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Tìm theo mã, người dùng hoặc vị trí..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
-          />
+    <div className="space-y-6 animate-in fade-in duration-500 pt-2">
+      {/* Filter Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="flex-1 w-full relative">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Tìm kiếm báo cáo</label>
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Nhập mã, tên người dùng hoặc vị trí..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+              />
+            </div>
+          </div>
+          <div className="w-full sm:w-64">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Trạng thái</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-white cursor-pointer transition-all text-sm font-medium text-gray-700"
+            >
+              <option value="all">Tất Cả Trạng Thái</option>
+              <option value="pending">Chờ Xử Lý</option>
+              <option value="accepted">Đã Duyệt</option>
+              <option value="rejected">Từ Chối</option>
+              <option value="assigned">Đã Giao Thu Gom</option>
+              <option value="collected">Hoàn Thành</option>
+            </select>
+          </div>
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
-        >
-          <option value="all">Tất Cả Trạng Thái</option>
-          <option value="pending">Chờ Xử Lý</option>
-          <option value="accepted">Đã Duyệt</option>
-          <option value="rejected">Từ Chối</option>
-          <option value="assigned">Đã Giao Thu Gom</option>
-          <option value="collected">Hoàn Thành</option>
-        </select>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Table Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50/50 border-b border-gray-100">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Báo Cáo</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Người Dùng</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Vị Trí</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Loại Rác</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Trạng Thái</th>
-                <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900">Thao Tác</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-500">Báo Cáo</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-500">Người Dùng</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-500">Vị Trí</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-500">Loại Rác</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-500">Trạng Thái</th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-500">Thao Tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-blue-600 font-medium">Đang tải dữ liệu...</td>
+                  <td colSpan={6} className="text-center py-16">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-100 border-t-emerald-600"></div>
+                    <p className="mt-4 text-gray-500 font-medium text-sm">Đang đồng bộ dữ liệu...</p>
+                  </td>
                 </tr>
               ) : filteredReports.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-gray-500 font-medium">Không tìm thấy báo cáo nào</td>
+                  <td colSpan={6} className="text-center py-16">
+                    <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <FileText size={24} className="text-gray-400" />
+                    </div>
+                    <p className="text-gray-900 font-semibold">Trống</p>
+                    <p className="text-gray-500 text-sm mt-1">Không tìm thấy báo cáo nào phù hợp.</p>
+                  </td>
                 </tr>
               ) : (
                 filteredReports.map((report) => {
                   const statusInfo = getStatusStyle(report.status);
                   return (
-                    <tr key={report.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={report.id} className="hover:bg-emerald-50/30 transition-colors group">
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-semibold text-gray-900">{report.reportNumber}</p>
-                          <p className="text-xs text-gray-500">{report.createdAt}</p>
+                          <p className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">{report.reportNumber}</p>
+                          <p className="text-xs text-gray-500 mt-0.5 font-medium">{report.createdAt}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-gray-900 text-sm">{report.citizen}</td>
+                      <td className="px-6 py-4 text-gray-700 text-sm font-medium">{report.citizen}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-start gap-2">
-                          <MapPin size={16} className="text-gray-400 mt-0.5 shrink-0" />
-                          <span className="text-gray-900 text-sm line-clamp-2">{report.location}</span>
+                          <MapPin size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+                          <span className="text-gray-600 text-sm font-medium line-clamp-2">{report.location}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-block px-3 py-1 rounded-full text-xs font-bold border bg-gray-100 text-gray-700">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700">
                           {report.wasteType}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${statusInfo.color}`}>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${statusInfo.color} shadow-sm`}>
                           {statusInfo.label}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <button 
                           onClick={() => setSelectedReport(report)}
-                          className="p-2 hover:bg-gray-200 rounded-lg transition-colors text-gray-600 hover:text-[#0AA468]"
+                          className="p-2 bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 rounded-lg transition-all text-gray-500 hover:text-emerald-600 shadow-sm"
                           title="Xem chi tiết"
                         >
-                          <Eye size={20} />
+                          <Eye size={18} />
                         </button>
                       </td>
                     </tr>
@@ -258,101 +316,159 @@ export const ReportsManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL CHI TIẾT BÁO CÁO FIX LỖI KHOẢNG TRẮNG */}
+      {/* DETAIL MODAL */}
       {selectedReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6">
-          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        <Portal>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl m-4 animate-in zoom-in-95 duration-200">
             
-            {/* Modal Header - Cố định */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Chi Tiết Báo Cáo {selectedReport.reportNumber}</h2>
-                <p className="text-sm text-gray-500 mt-1">Ngày gửi: {selectedReport.createdAt}</p>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50 rounded-t-2xl shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Chi Tiết Báo Cáo {selectedReport.reportNumber}</h2>
+                  <p className="text-sm font-medium text-gray-500 mt-1">Được gửi vào: {selectedReport.createdAt}</p>
+                </div>
               </div>
               <button 
                 onClick={() => setSelectedReport(null)}
-                className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
+                className="p-2 bg-white border border-gray-200 hover:bg-gray-100 rounded-full text-gray-500 transition-colors shadow-sm"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
-            {/* Modal Body - Vùng cho phép cuộn */}
+            {/* Modal Body */}
             <div className="p-6 space-y-6 overflow-y-auto grow">
-              <div className="grid grid-cols-2 gap-6 bg-gray-50 p-4 rounded-lg">
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Người báo cáo</p>
-                  <p className="font-semibold text-gray-900">{selectedReport.citizen}</p>
+              
+              {/* Top Info Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white border border-gray-100 shadow-sm rounded-xl p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-500 mb-2">
+                    <User size={16} /> Người báo cáo
+                  </div>
+                  <p className="font-bold text-gray-900 text-lg">{selectedReport.citizen}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Trạng thái hiện tại</p>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(selectedReport.status).color}`}>
+                <div className="bg-white border border-gray-100 shadow-sm rounded-xl p-4 flex flex-col justify-center items-start">
+                  <div className="text-sm font-semibold text-gray-500 mb-2">Trạng thái xử lý</div>
+                  <span className={`inline-flex px-3 py-1.5 rounded-full text-sm font-bold border ${getStatusStyle(selectedReport.status).color}`}>
                     {getStatusStyle(selectedReport.status).label}
                   </span>
                 </div>
+              </div>
+
+              {/* Location & Type */}
+              <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-5 space-y-4">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Loại rác</p>
-                  <p className="font-medium text-gray-900">{selectedReport.wasteType}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-sm text-gray-500 mb-1">Vị trí</p>
-                  <div className="flex items-start gap-2">
-                    <MapPin size={18} className="text-[#0AA468] shrink-0" />
-                    <p className="font-medium text-gray-900">{selectedReport.location}</p>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800 mb-1">
+                    <MapPin size={16} /> Vị trí được báo cáo
                   </div>
+                  <p className="font-medium text-gray-900 leading-relaxed">{selectedReport.location}</p>
+                </div>
+                <div className="border-t border-emerald-100 pt-4 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-emerald-800">Phân loại rác:</span>
+                  <span className="font-bold text-gray-900 bg-white px-3 py-1 rounded-lg shadow-sm border border-emerald-100">
+                    {selectedReport.wasteType}
+                  </span>
                 </div>
               </div>
 
+              {/* Description */}
               <div>
-                <p className="text-sm font-semibold text-gray-900 mb-2">Mô tả chi tiết</p>
-                <p className="text-gray-700 bg-white border border-gray-200 p-4 rounded-lg">
-                  {selectedReport.description}
-                </p>
+                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 mb-3">
+                  <MessageSquare size={16} className="text-gray-400" /> Mô tả chi tiết
+                </h3>
+                <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl text-gray-700 text-sm font-medium leading-relaxed">
+                  {selectedReport.description || "Người dân không để lại mô tả nào."}
+                </div>
               </div>
 
+              {/* Images */}
               {selectedReport.images && selectedReport.images.length > 0 && (
                 <div>
-                  <p className="text-sm font-semibold text-gray-900 mb-2">Hình ảnh đính kèm</p>
+                  <h3 className="text-sm font-bold text-gray-900 mb-3">Hình ảnh đính kèm ({selectedReport.images.length})</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {selectedReport.images.map((img, idx) => (
-                      <div key={idx} className="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                        <img src={img} alt={`Report img ${idx}`} className="w-full h-full object-cover" />
-                      </div>
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setGalleryImages(selectedReport.images);
+                          setGalleryOpen(true);
+                        }}
+                        className="aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200 hover:border-emerald-500 transition-all cursor-pointer group relative shadow-sm"
+                      >
+                        <img
+                          src={img}
+                          alt={`Report image ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23f3f4f6' width='100' height='100'/%3E%3Ctext x='50%' y='50%' text-anchor='middle' dy='.3em' fill='%239ca3af' font-size='10'%3EImage Error%3C/text%3E%3C/svg%3E";
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                          <Eye size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity transform scale-75 group-hover:scale-100" />
+                        </div>
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Modal Footer - Cố định */}
-            {selectedReport.status.toLowerCase() === "pending" ? (
-              <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-4 justify-end shrink-0">
-                <button
-                  onClick={() => handleReportAction(selectedReport.id, "reject")}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-white border-2 border-red-500 text-red-600 hover:bg-red-50 font-bold rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <XCircle size={20} />
-                  Từ Chối
-                </button>
-                <button
-                  onClick={() => handleReportAction(selectedReport.id, "accept")}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-[#0AA468] hover:bg-[#088F5A] text-white font-bold rounded-lg transition-colors disabled:opacity-50 shadow-lg shadow-green-200"
-                >
-                  <Check size={20} />
-                  Duyệt Báo Cáo
-                </button>
-              </div>
-            ) : (
-              <div className="p-6 border-t border-gray-100 bg-gray-50 flex items-center gap-3 text-gray-500 justify-center shrink-0">
-                <AlertCircle size={20} />
-                <p className="font-medium">Báo cáo này đã được xử lý và không thể thay đổi trạng thái.</p>
-              </div>
-            )}
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl shrink-0">
+              {selectedReport.status.toLowerCase() === "pending" ? (
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => handleReportAction(selectedReport.id, "reject")}
+                    disabled={actionLoading}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 font-bold rounded-xl transition-all shadow-sm disabled:opacity-50"
+                  >
+                    <XCircle size={18} /> Từ Chối
+                  </button>
+                  <button
+                    onClick={() => handleReportAction(selectedReport.id, "accept")}
+                    disabled={actionLoading}
+                    className="flex items-center gap-2 px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
+                  >
+                    <Check size={18} /> Duyệt Báo Cáo
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-gray-500 justify-center bg-gray-100 py-3 rounded-xl border border-gray-200 font-medium text-sm">
+                  <AlertCircle size={18} />
+                  Báo cáo này đã được xử lý và khóa thao tác.
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
+        </Portal>
       )}
+
+      {/* Image Gallery Modal */}
+      <ImageGallery
+        images={galleryImages}
+        isOpen={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        title={selectedReport ? `Ảnh Báo Cáo ${selectedReport.reportNumber}` : "Hình Ảnh"}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modal.isOpen}
+        config={modal.config}
+        onConfirm={modal.onConfirm}
+        onCancel={modal.onCancel}
+        isLoading={actionLoading}
+      />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
   );
 };

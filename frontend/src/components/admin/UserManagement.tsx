@@ -1,8 +1,10 @@
+"use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table } from '../ui/Table';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { Edit2, Trash2, UserCheck, Search, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Edit3, ShieldAlert, UserCheck, Search, X, AlertCircle, CheckCircle2, Filter, MoreHorizontal, Mail, Shield } from 'lucide-react';
+import { Portal } from '../shared/Portal';
 
 interface User {
   id: string;
@@ -19,24 +21,13 @@ export const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
-  // --- States cho Form Thêm ---
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '', fullName: '', phone: '', role: 'admin', district: '', ward: ''
-  });
-
-  // --- States cho Modal Khóa/Mở Khóa ---
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, userId: '', isActive: false });
   const [isToggling, setIsToggling] = useState(false);
-
-  // --- States cho Modal Đổi Quyền ---
   const [editRoleModal, setEditRoleModal] = useState({ isOpen: false, userId: '', role: '' });
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
-  // 👉 NÂNG CẤP 1: Thêm tham số silentLoad để không làm chớp bảng
   const fetchUsers = useCallback(async (silentLoad = false) => {
-    if (!silentLoad) setIsLoading(true); // Chỉ hiện spinner to khi load lần đầu hoặc search
+    if (!silentLoad) setIsLoading(true);
     try {
       const queryParams = new URLSearchParams();
       if (searchTerm) queryParams.append('search', searchTerm);
@@ -50,7 +41,7 @@ export const UserManagement: React.FC = () => {
         setUsers([]);
       }
     } catch (error) {
-      console.error('Lỗi khi gọi API:', error);
+      console.error('Lỗi:', error);
     } finally {
       if (!silentLoad) setIsLoading(false);
     }
@@ -58,32 +49,11 @@ export const UserManagement: React.FC = () => {
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      fetchUsers(false); // Gõ search thì vẫn hiện loading cho người ta biết
+      fetchUsers(false);
     }, 500);
     return () => clearTimeout(timeoutId);
   }, [fetchUsers]);
 
-  // --- NÂNG CẤP 2: Hàm thêm User gọi silentLoad ---
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const response = await fetch('http://localhost:8080/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      if (response.ok) {
-        setIsAddModalOpen(false);
-        setFormData({ email: '', fullName: '', phone: '', role: 'admin', district: '', ward: '' });
-        fetchUsers(true); // True = Tải lại ngầm, không chớp bảng
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // --- NÂNG CẤP 3: Hàm thực thi Khóa/Mở khóa ---
   const executeToggleStatus = async () => {
     setIsToggling(true);
     try {
@@ -92,14 +62,13 @@ export const UserManagement: React.FC = () => {
       });
       if (response.ok) {
         setConfirmModal({ isOpen: false, userId: '', isActive: false });
-        fetchUsers(true); // Tải lại ngầm
+        fetchUsers(true);
       }
     } finally {
       setIsToggling(false);
     }
   };
 
-  // --- NÂNG CẤP 4: Hàm thực thi Đổi quyền ---
   const executeUpdateRole = async () => {
     setIsUpdatingRole(true);
     try {
@@ -110,199 +79,228 @@ export const UserManagement: React.FC = () => {
       });
       if (response.ok) {
         setEditRoleModal({ isOpen: false, userId: '', role: '' });
-        fetchUsers(true); // Tải lại ngầm
+        fetchUsers(true);
       }
     } finally {
       setIsUpdatingRole(false);
     }
   };
 
-  const getRoleBadgeVariant = (role: string) => {
+  const getRoleStyle = (role: string) => {
     switch (role?.toLowerCase()) {
-      case 'admin': return 'primary';
-      case 'enterprise': return 'info';
-      case 'collector': return 'warning';
-      default: return 'success';
+      case 'admin': return "bg-purple-50 text-purple-700 border-purple-100";
+      case 'enterprise': return "bg-blue-50 text-blue-700 border-blue-100";
+      case 'collector': return "bg-amber-50 text-amber-700 border-amber-100";
+      default: return "bg-slate-50 text-slate-700 border-slate-100";
     }
   };
 
   const columns = [
-    { key: 'fullName', label: 'Tên người dùng' },
-    { key: 'email', label: 'Email' },
+    { 
+      key: 'fullName', 
+      label: 'Thành viên',
+      render: (name: string, user: User) => (
+        <div className="flex items-center gap-3 py-1">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold shadow-sm">
+            {name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div className="font-bold text-gray-900 text-sm">{name}</div>
+            <div className="text-[11px] text-gray-400 flex items-center gap-1 font-medium">
+              <Mail size={12} /> {user.email}
+            </div>
+          </div>
+        </div>
+      )
+    },
     { 
       key: 'role', 
       label: 'Vai trò',
       render: (role: string) => (
-        <Badge variant={getRoleBadgeVariant(role)}>{role?.toUpperCase() || 'UNKNOWN'}</Badge>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold border uppercase tracking-wider ${getRoleStyle(role)}`}>
+          <Shield size={12} /> {role}
+        </span>
       )
     },
     { 
       key: 'isActive', 
       label: 'Trạng thái',
       render: (isActive: boolean) => (
-        <Badge variant={isActive ? 'success' : 'danger'}>
-          {isActive ? 'Hoạt động' : 'Tạm khóa'}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full animate-pulse ${isActive ? 'bg-emerald-500' : 'bg-red-400'}`} />
+          <span className={`text-xs font-bold ${isActive ? 'text-emerald-600' : 'text-red-400'}`}>
+            {isActive ? 'HOẠT ĐỘNG' : 'ĐÃ KHÓA'}
+          </span>
+        </div>
       )
     },
-    { key: 'lastActiveDate', label: 'Hoạt động cuối' },
+    { 
+      key: 'lastActiveDate', 
+      label: 'Truy cập cuối',
+      render: (date: string) => (
+        <span className="text-gray-400 text-xs font-medium italic">{date || 'Chưa có dữ liệu'}</span>
+      )
+    },
     {
       key: 'actions',
-      label: 'Thao tác',
+      label: '',
       render: (_: unknown, user: User) => (
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            title="Chỉnh sửa quyền"
+        <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+          <button 
             onClick={() => setEditRoleModal({ isOpen: true, userId: user.id, role: user.role })}
+            className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-blue-600 transition-colors"
+            title="Sửa quyền"
           >
-            <Edit2 size={16} />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className={user.isActive ? "text-red-500 border-red-200 hover:bg-red-50" : "text-green-500 border-green-200 hover:bg-green-50"} 
-            title={user.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+            <Edit3 size={16} />
+          </button>
+          <button 
             onClick={() => setConfirmModal({ isOpen: true, userId: user.id, isActive: user.isActive })}
+            className={`p-2 rounded-full transition-colors ${
+              user.isActive ? "text-gray-400 hover:text-red-600 hover:bg-red-50" : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
+            }`}
           >
-            {user.isActive ? <Trash2 size={16} /> : <UserCheck size={16} />}
-          </Button>
+            {user.isActive ? <ShieldAlert size={16} /> : <UserCheck size={16} />}
+          </button>
         </div>
       )
     }
   ];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Quản lý người dùng</h2>
-        <Button onClick={() => setIsAddModalOpen(true)} className="bg-orange-500 hover:bg-orange-600 text-white shadow-md">
-          <UserCheck className="mr-2 h-4 w-4" /> Thêm quản trị viên
-        </Button>
+    <div className="space-y-6 animate-in fade-in duration-700 pt-2">
+      
+      {/* Search & Filter Bar - Hiện đại, Tinh gọn */}
+      <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-5">
+        <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1 group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Tìm kiếm thành viên theo tên hoặc email..." 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all text-sm font-medium placeholder:text-gray-300" 
+                />
+            </div>
+            <div className="flex gap-3">
+              <div className="relative min-w-[180px]">
+                  <select 
+                    value={roleFilter} 
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    className="w-full pl-4 pr-10 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500/20 appearance-none cursor-pointer text-sm font-bold text-gray-600" 
+                  >
+                      <option value="all">Tất cả vai trò</option>
+                      <option value="citizen">Người dân</option>
+                      <option value="collector">Người thu gom</option>
+                      <option value="enterprise">Doanh nghiệp</option>
+                      <option value="admin">Quản trị viên</option>
+                  </select>
+                  <Filter className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" size={16} />
+              </div>
+            </div>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <div className="mb-6 flex gap-4">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input type="text" placeholder="Tìm theo tên hoặc email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 w-72 transition-all" />
-            </div>
-            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white cursor-pointer" >
-                <option value="all">Tất cả vai trò</option>
-                <option value="citizen">Citizen</option>
-                <option value="collector">Collector</option>
-                <option value="enterprise">Enterprise</option>
-                <option value="admin">Admin</option>
-            </select>
-        </div>
-        
+      {/* Table Section - Thoáng đãng */}
+      <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden">
         {isLoading ? (
-            <div className="py-12 flex justify-center items-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+            <div className="py-24 flex flex-col items-center justify-center">
+                <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-4" />
+                <p className="text-gray-400 text-sm font-medium animate-pulse">Đang tải dữ liệu người dùng...</p>
             </div>
         ) : users.length > 0 ? (
-            <Table columns={columns} data={users} />
+            <Table columns={columns} data={users} className="hover-rows" />
         ) : (
-            <div className="text-center py-12 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">Không tìm thấy người dùng nào phù hợp.</div>
+            <div className="p-20 text-center">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-dashed border-gray-200">
+                  <X className="text-gray-300" size={32} />
+                </div>
+                <p className="text-gray-900 font-bold text-lg">Không tìm thấy ai</p>
+                <p className="text-gray-400 text-sm mt-1">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm của bạn.</p>
+            </div>
         )}
       </div>
 
-      {/* --- MODAL THÊM --- (Giữ nguyên không đổi) */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl relative">
-            <button onClick={() => setIsAddModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={20} /></button>
-            <h3 className="text-xl font-bold mb-4 text-gray-800">Thêm Người Dùng Mới</h3>
-            <form onSubmit={handleAddUser} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
-                <input type="text" required placeholder="Nguyễn Văn A" className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-orange-500 outline-none" value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" required placeholder="email@example.com" className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-orange-500 outline-none" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-                  <input type="text" placeholder="090..." className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-orange-500 outline-none" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vai trò</label>
-                  <select className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-orange-500 outline-none bg-white" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})}>
-                    <option value="admin">Quản trị viên</option>
-                    <option value="collector">Người thu gom</option>
-                    <option value="enterprise">Doanh nghiệp</option>
-                    <option value="citizen">Người dân</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium">Hủy</button>
-                <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium disabled:bg-orange-300">{isSubmitting ? 'Đang lưu...' : 'Lưu lại'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL XÁC NHẬN KHÓA/MỞ KHÓA (Giao diện chuẩn thực tế) --- */}
+      {/* MODAL CẢNH BÁO KHÓA - Design cực xịn */}
       {confirmModal.isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in zoom-in-95 duration-200">
-          <div className="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl text-center">
-            <div className={`mx-auto flex items-center justify-center h-16 w-16 rounded-full mb-4 ${confirmModal.isActive ? 'bg-red-100 text-red-500' : 'bg-green-100 text-green-500'}`}>
-              {confirmModal.isActive ? <AlertTriangle size={32} /> : <CheckCircle2 size={32} />}
-            </div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">
-              {confirmModal.isActive ? 'Khóa tài khoản?' : 'Mở khóa tài khoản?'}
-            </h3>
-            <p className="text-gray-500 text-sm mb-6">
-              {confirmModal.isActive 
-                ? 'Tài khoản này sẽ không thể đăng nhập vào hệ thống nữa. Bạn có chắc chắn không?' 
-                : 'Tài khoản này sẽ được phép hoạt động trở lại trong hệ thống.'}
-            </p>
-            <div className="flex justify-center gap-3">
-              <button onClick={() => setConfirmModal({ isOpen: false, userId: '', isActive: false })} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium w-full">Hủy</button>
-              <button onClick={executeToggleStatus} disabled={isToggling} className={`px-5 py-2.5 text-white rounded-lg font-medium w-full ${confirmModal.isActive ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}>
-                {isToggling ? 'Đang xử lý...' : 'Xác nhận'}
-              </button>
+        <Portal>
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[100] animate-in fade-in duration-300">
+            <div className="bg-white rounded-[32px] p-10 max-w-sm w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-300 text-center">
+              <div className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-xl ${confirmModal.isActive ? 'bg-red-50 text-red-500 shadow-red-100' : 'bg-emerald-50 text-emerald-500 shadow-emerald-100'}`}>
+                {confirmModal.isActive ? <AlertCircle size={48} /> : <CheckCircle2 size={48} />}
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-3 tracking-tight">
+                {confirmModal.isActive ? 'Khóa quyền?' : 'Mở quyền?'}
+              </h3>
+              <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                {confirmModal.isActive 
+                  ? 'Tài khoản này sẽ bị đình chỉ và không thể truy cập hệ thống cho đến khi được mở lại.' 
+                  : 'Xác nhận khôi phục quyền truy cập đầy đủ cho tài khoản này.'}
+              </p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={executeToggleStatus} 
+                  disabled={isToggling}
+                  className={`w-full py-4 rounded-2xl font-black text-sm tracking-widest shadow-lg transition-all active:scale-95 ${confirmModal.isActive ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-200' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200'}`}
+                >
+                  {isToggling ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN NGAY'}
+                </button>
+                <button 
+                  onClick={() => setConfirmModal({ isOpen: false, userId: '', isActive: false })} 
+                  className="w-full py-4 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-2xl font-bold text-sm transition-all"
+                >
+                  QUAY LẠI
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
-      {/* --- MODAL CHỌN QUYỀN (Thay cho window.prompt phèn) --- */}
+      {/* MODAL CẬP NHẬT QUYỀN - Grid Layout */}
       {editRoleModal.isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in zoom-in-95 duration-200">
-          <div className="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Cập nhật Vai trò</h3>
-              <button onClick={() => setEditRoleModal({ isOpen: false, userId: '', role: '' })} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
-            </div>
-            <p className="text-sm text-gray-500 mb-4">Chọn quyền hạn mới cho người dùng này trong hệ thống.</p>
-            <div className="mb-6">
-              <select 
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-amber-500 outline-none bg-white text-gray-800 font-medium"
-                value={editRoleModal.role} 
-                onChange={(e) => setEditRoleModal({ ...editRoleModal, role: e.target.value })}
-              >
-                <option value="admin">Quản trị viên (Admin)</option>
-                <option value="collector">Người thu gom (Collector)</option>
-                <option value="enterprise">Doanh nghiệp (Enterprise)</option>
-                <option value="citizen">Người dân (Citizen)</option>
-              </select>
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setEditRoleModal({ isOpen: false, userId: '', role: '' })} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium">Hủy</button>
-              <button onClick={executeUpdateRole} disabled={isUpdatingRole} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-                {isUpdatingRole ? 'Đang lưu...' : 'Lưu thay đổi'}
-              </button>
+        <Portal>
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[100] animate-in fade-in duration-300">
+            <div className="bg-white rounded-[32px] p-8 max-w-md w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="bg-blue-50 p-3 rounded-2xl text-blue-600">
+                    <Shield size={24} />
+                  </div>
+                  <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Phân quyền</h3>
+                </div>
+                <button onClick={() => setEditRoleModal({ isOpen: false, userId: '', role: '' })} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"><X size={24} /></button>
+              </div>
+              
+              <div className="space-y-4 mb-8">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] ml-1">Chọn cấp độ truy cập mới</p>
+                <div className="grid grid-cols-1 gap-3">
+                  {['admin', 'enterprise', 'collector', 'citizen'].map((r) => (
+                    <label key={r} className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${editRoleModal.role === r ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
+                      <span className="flex items-center gap-3">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${editRoleModal.role === r ? 'border-blue-500' : 'border-gray-300'}`}>
+                          {editRoleModal.role === r && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
+                        </div>
+                        <span className={`text-sm font-bold capitalize ${editRoleModal.role === r ? 'text-blue-700' : 'text-gray-600'}`}>{r}</span>
+                      </span>
+                      <input type="radio" className="hidden" name="role" value={r} checked={editRoleModal.role === r} onChange={() => setEditRoleModal({...editRoleModal, role: r})} />
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={executeUpdateRole} 
+                  disabled={isUpdatingRole} 
+                  className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-2xl shadow-xl shadow-blue-200 transition-all active:scale-95 uppercase tracking-widest"
+                >
+                  {isUpdatingRole ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </div>
   );

@@ -2,42 +2,55 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import {
-  LayoutDashboard,
   Users,
   FileText,
   Truck,
   AlertCircle,
-  Settings,
   LogOut,
   Menu,
   X,
   BarChart3,
+  Building2,
+  ChevronRight
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { SystemActivity } from "./SystemActivity";
 import { WasteAnalytics } from "./WasteAnalytics";
 import { UserManagement } from "./UserManagement";
 import { ReportsManagement } from "./ReportsManagement";
 import { CollectionTasks } from "./CollectionTasks";
 import { DisputesManagement } from "./DisputesManagement";
+import { EnterpriseManagement } from "./EnterpriseManagement";
+import { useSignalR } from "@/hooks/useSignalR";
 
-type Tab = "dashboard" | "analytics" | "users" | "reports" | "tasks" | "disputes" | "settings";
+type Tab = "analytics" | "users" | "reports" | "tasks" | "disputes" | "enterprises";
 
 export const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [activeTab, setActiveTab] = useState<Tab>("analytics");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [taskStatusUpdates, setTaskStatusUpdates] = useState<Record<string, string>>({});
+
+  useSignalR({
+    enabled: true,
+    onTaskStatusUpdated: (taskId, status) => {
+      setTaskStatusUpdates((prev) => ({
+        ...prev,
+        [taskId]: status,
+      }));
+    },
+    onError: (error) => {
+      console.error("[AdminDashboard] SignalR Error:", error);
+    },
+  });
 
   const tabs = [
-    { id: "dashboard" as Tab, label: "Tổng Quan", icon: LayoutDashboard },
     { id: "analytics" as Tab, label: "Thống Kê Rác", icon: BarChart3 },
     { id: "reports" as Tab, label: "Quản Lý Báo Cáo", icon: FileText },
-    { id: "tasks" as Tab, label: "Quản Lý Thu Gom", icon: Truck },
-    { id: "disputes" as Tab, label: "Khiếu Nại", icon: AlertCircle },
+    { id: "disputes" as Tab, label: "Quản Lý Khiếu Nại", icon: AlertCircle },
+    { id: "enterprises" as Tab, label: "Quản Lý Doanh Nghiệp", icon: Building2 },
     { id: "users" as Tab, label: "Quản Lý Người Dùng", icon: Users },
-    { id: "settings" as Tab, label: "Cài Đặt", icon: Settings },
   ];
 
   const handleLogout = () => {
@@ -47,54 +60,45 @@ export const AdminDashboard: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "dashboard":
-        return <SystemActivity />;
-      case "analytics":
-        return <WasteAnalytics />;
-      case "reports":
-        return <ReportsManagement />;
-      case "tasks":
-        return <CollectionTasks />;
-      case "disputes":
-        return <DisputesManagement />;
-      case "users":
-        return <UserManagement />;
-      case "settings":
-        return <SettingsPage />;
-      default:
-        return <SystemActivity />;
+      case "analytics": return <WasteAnalytics />;
+      case "reports": return <ReportsManagement />;
+      case "disputes": return <DisputesManagement />;
+      case "enterprises": return <EnterpriseManagement />;
+      case "users": return <UserManagement />;
+      default: return <WasteAnalytics />;
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans">
       {/* Sidebar */}
       <aside
         className={`${
-          sidebarOpen ? "w-64" : "w-20"
-        } bg-white border-r border-gray-200 flex flex-col transition-all duration-300 hidden md:flex`}
+          sidebarOpen ? "w-72" : "w-20"
+        } bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out hidden md:flex z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}
       >
-        {/* Logo */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-center">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/logo/logo.png"
-              alt="CWCRP Logo"
-              width={100}
-              height={100}
-              className="rounded-lg"
-            />
+        {/* Branding */}
+        <div className="p-8 mb-4">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="min-w-[40px] h-10 relative">
+              <Image
+                src="/logo/logo.png"
+                alt="CWCRP Logo"
+                fill
+                className="rounded-xl object-contain"
+              />
+            </div>
             {sidebarOpen && (
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">CWCRP</h1>
-                <p className="text-xs text-gray-500">Admin Portal</p>
+              <div className="animate-in fade-in slide-in-from-left-4 duration-500">
+                <h1 className="text-xl font-black text-slate-800 tracking-tight leading-none">CWCRP</h1>
+                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Admin Portal</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -103,176 +107,96 @@ export const AdminDashboard: React.FC = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                  w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 group relative
                   ${
                     isActive
-                      ? "bg-green-50 text-[#0AA468]"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-emerald-50 text-emerald-700 shadow-sm"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                   }
                 `}
-                title={!sidebarOpen ? tab.label : ""}
               >
-                <Icon size={20} className={isActive ? "text-[#0AA468]" : "text-gray-400"} />
-                {sidebarOpen && <span>{tab.label}</span>}
+                {isActive && (
+                  <div className="absolute left-0 w-1.5 h-6 bg-emerald-500 rounded-r-full animate-in slide-in-from-left-2" />
+                )}
+                
+                <Icon 
+                  size={20} 
+                  className={`transition-transform duration-200 group-hover:scale-110 ${isActive ? "text-emerald-600" : "text-slate-400"}`} 
+                />
+                
+                {sidebarOpen && (
+                  <span className="animate-in fade-in duration-300 flex-1 text-left">
+                    {tab.label}
+                  </span>
+                )}
+
+                {sidebarOpen && isActive && (
+                  <ChevronRight size={14} className="text-emerald-400 animate-in fade-in" />
+                )}
               </button>
             );
           })}
         </nav>
 
-        {/* User Profile */}
-        <div className="p-4 border-t border-gray-200 space-y-3">
-          {sidebarOpen && (
-            <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0AA468] to-[#067D54] flex items-center justify-center text-white font-bold text-sm">
-                {user?.fullName?.charAt(0).toUpperCase() || "A"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+        {/* User Profile - Bottom */}
+        <div className="p-4 mt-auto border-t border-slate-100">
+          <div className={`
+            flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100 transition-all
+            ${sidebarOpen ? "px-3" : "px-0 justify-center bg-transparent border-none"}
+          `}>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-emerald-100 shrink-0">
+              {user?.fullName?.charAt(0).toUpperCase() || "A"}
+            </div>
+            
+            {sidebarOpen && (
+              <div className="flex-1 min-w-0 animate-in fade-in duration-300">
+                <p className="text-[13px] font-black text-slate-800 truncate">
                   {user?.fullName || "Administrator"}
                 </p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                <p className="text-[11px] font-medium text-slate-400 truncate">{user?.email}</p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <button
             onClick={handleLogout}
             className={`
-              w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-              text-red-600 hover:bg-red-50
+              mt-3 w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl text-xs font-black transition-all
+              text-rose-500 hover:bg-rose-50 group
+              ${sidebarOpen ? "" : "justify-center px-0"}
             `}
-            title={!sidebarOpen ? "Đăng Xuất" : ""}
           >
-            <LogOut size={20} />
-            {sidebarOpen && <span>Đăng Xuất</span>}
+            <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+            {sidebarOpen && <span className="uppercase tracking-widest">Đăng Xuất</span>}
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto flex flex-col">
-        {/* Mobile Header */}
-        <div className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-10">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg"
-            >
-              {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-            <h1 className="font-bold text-gray-900">Admin Dashboard</h1>
-          </div>
+      {/* Main Viewport */}
+      <main className="flex-1 flex flex-col min-w-0 relative">
+        
+        {/* Header đã xóa bỏ ở đây để không hiện dòng tiêu đề và thông báo phèn */}
+
+        {/* Mobile Header (Simplified) */}
+        <div className="md:hidden bg-white border-b border-slate-200 p-5 flex items-center justify-between sticky top-0 z-40 shadow-sm">
           <button
-            onClick={handleLogout}
-            className="p-2 hover:bg-red-50 rounded-lg text-red-600"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 text-slate-600 bg-slate-50 rounded-xl"
           >
+            {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+          <span className="font-black text-slate-800 tracking-tight uppercase text-sm">Dashboard</span>
+          <button onClick={handleLogout} className="p-2 text-rose-500 bg-rose-50 rounded-xl">
             <LogOut size={20} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full">
-          {renderContent()}
+        {/* Content Container - Đẩy padding lên để sát mép trên một cách hợp lý */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 max-w-[1600px] w-full mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+           {renderContent()}
         </div>
+
       </main>
-    </div>
-  );
-};
-
-// Settings Page Component
-const SettingsPage: React.FC = () => {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Cài Đặt Hệ Thống</h1>
-        <p className="text-gray-600 mt-2">Quản lý cấu hình và quy tắc hệ thống</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* General Settings */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <h2 className="font-bold text-lg text-gray-900">Cài Đặt Chung</h2>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Tên Hệ Thống
-            </label>
-            <input
-              type="text"
-              defaultValue="CWCRP Platform"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Email Hỗ Trợ
-            </label>
-            <input
-              type="email"
-              defaultValue="support@cwcrp.com"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Điện Thoại Hỗ Trợ
-            </label>
-            <input
-              type="tel"
-              defaultValue="+84 123 456 789"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
-            />
-          </div>
-
-          <button className="w-full py-2.5 bg-[#0AA468] hover:bg-[#088F5A] text-white font-bold rounded-lg transition-all">
-            Lưu Thay Đổi
-          </button>
-        </div>
-
-        {/* Points Configuration */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <h2 className="font-bold text-lg text-gray-900">Cấu Hình Điểm</h2>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Điểm Báo Cáo Hợp Lệ
-            </label>
-            <input
-              type="number"
-              defaultValue="30"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Điểm Phân Loại Đúng
-            </label>
-            <input
-              type="number"
-              defaultValue="20"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Điểm Xử Lý Nhanh (&lt;2h)
-            </label>
-            <input
-              type="number"
-              defaultValue="10"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
-            />
-          </div>
-
-          <button className="w-full py-2.5 bg-[#0AA468] hover:bg-[#088F5A] text-white font-bold rounded-lg transition-all">
-            Cập Nhật Quy Tắc
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

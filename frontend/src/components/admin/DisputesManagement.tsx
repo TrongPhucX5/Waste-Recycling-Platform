@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Search, AlertCircle, CheckCircle, XCircle, MessageSquare } from "lucide-react";
+import { Search, AlertCircle, CheckCircle, XCircle, MessageSquare, ShieldAlert } from "lucide-react";
+import { ConfirmationModal, useConfirmation } from "../shared/ConfirmationModal";
+import { ToastContainer, useToast } from "../shared/Toast";
 
 interface Dispute {
   id: string;
@@ -19,6 +21,10 @@ export const DisputesManagement: React.FC = () => {
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Modals & Toast
+  const modal = useConfirmation();
+  const toast = useToast();
 
   // 1. GỌI API LẤY DANH SÁCH KHIẾU NẠI
   const fetchDisputes = async () => {
@@ -92,15 +98,17 @@ export const DisputesManagement: React.FC = () => {
   // 2. XỬ LÝ ĐỒNG Ý / TỪ CHỐI KHIẾU NẠI
   const handleAction = async (id: string, action: "resolve" | "reject") => {
     const actionName = action === "resolve" ? "ĐỒNG Ý và GIẢI QUYẾT" : "TỪ CHỐI";
+    const actionTitle = action === "resolve" ? "Giải Quyết Khiếu Nại" : "Từ Chối Khiếu Nại";
     
-    // Bật hộp thoại yêu cầu Admin nhập cách xử lý / lý do
-    const adminResponse = window.prompt(`Nhập phản hồi/quyết định của bạn để ${actionName} khiếu nại này:`);
-    
-    if (adminResponse === null) return; // User bấm Cancel
-    if (adminResponse.trim() === "") {
-      alert("Bạn phải nhập phản hồi cho người dân!");
-      return;
-    }
+    const adminResponse = await modal.prompt({
+      title: actionTitle,
+      message: `Nhập phản hồi/quyết định của bạn để ${actionName} khiếu nại này:`,
+      placeholder: "Nhập phản hồi chi tiết cho người dân...",
+      confirmText: action === "resolve" ? "Giải Quyết" : "Từ Chối",
+      cancelText: "Hủy",
+    });
+
+    if (adminResponse === null) return;
 
     try {
       setActionLoading(true);
@@ -118,15 +126,15 @@ export const DisputesManagement: React.FC = () => {
       });
 
       if (response.ok) {
-        alert(`Đã ${actionName.toLowerCase()} khiếu nại thành công!`);
-        fetchDisputes(); // Load lại danh sách
+        toast.success(`Khiếu nại đã được ${action === "resolve" ? "giải quyết" : "từ chối"} thành công!`);
+        fetchDisputes();
       } else {
         const errJson = await response.json();
-        alert("Thao tác thất bại: " + (errJson.message || response.status));
+        toast.error("Thao tác thất bại: " + (errJson.message || `Lỗi ${response.status}`));
       }
     } catch (error) {
       console.error(error);
-      alert("Lỗi kết nối mạng!");
+      toast.error("Lỗi kết nối mạng!");
     } finally {
       setActionLoading(false);
     }
@@ -135,10 +143,10 @@ export const DisputesManagement: React.FC = () => {
   // Helper UI
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "pending": return "bg-yellow-100 text-yellow-700 border-yellow-300";
-      case "resolved": return "bg-green-100 text-green-700 border-green-300";
-      case "rejected": return "bg-red-100 text-red-700 border-red-300";
-      default: return "bg-gray-100 text-gray-700 border-gray-300";
+      case "pending": return "bg-amber-100 text-amber-700 border-amber-200";
+      case "resolved": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "rejected": return "bg-red-100 text-red-700 border-red-200";
+      default: return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
 
@@ -153,118 +161,123 @@ export const DisputesManagement: React.FC = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "pending": return <AlertCircle size={16} />;
-      case "resolved": return <CheckCircle size={16} />;
-      case "rejected": return <XCircle size={16} />;
+      case "pending": return <AlertCircle size={14} className="shrink-0"/>;
+      case "resolved": return <CheckCircle size={14} className="shrink-0"/>;
+      case "rejected": return <XCircle size={14} className="shrink-0"/>;
       default: return null;
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Quản Lý Khiếu Nại</h1>
-        <p className="text-gray-600 mt-2">Tiếp nhận và giải quyết khiếu nại từ người dân</p>
-      </div>
-
-      {/* Search & Filter */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Tìm theo mã khiếu nại, người dân, nội dung..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
-          />
+    <div className="space-y-6 animate-in fade-in duration-500 pt-2">
+      {/* Filter Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="flex-1 w-full relative">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Tìm kiếm khiếu nại</label>
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Nhập mã khiếu nại, tên người dân..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+              />
+            </div>
+          </div>
+          <div className="w-full sm:w-64">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Trạng thái</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-white cursor-pointer transition-all text-sm font-medium text-gray-700"
+            >
+              <option value="all">Tất Cả Trạng Thái</option>
+              <option value="pending">Chờ Xử Lý</option>
+              <option value="resolved">Đã Giải Quyết</option>
+              <option value="rejected">Bị Từ Chối</option>
+            </select>
+          </div>
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0AA468]"
-        >
-          <option value="all">Tất Cả Trạng Thái</option>
-          <option value="pending">Chờ Xử Lý</option>
-          <option value="resolved">Đã Giải Quyết</option>
-          <option value="rejected">Bị Từ Chối</option>
-        </select>
       </div>
 
       {/* Disputes List */}
       {loading ? (
-        <div className="text-center py-12 text-blue-600 font-medium">Đang tải dữ liệu khiếu nại...</div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-16 flex flex-col items-center justify-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-100 border-t-emerald-600"></div>
+          <p className="mt-4 text-gray-500 font-medium text-sm">Đang đồng bộ dữ liệu khiếu nại...</p>
+        </div>
       ) : (
         <div className="space-y-4">
           {disputes.length > 0 ? (
             disputes.map((dispute) => (
               <div
                 key={dispute.id}
-                className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow group"
               >
                 {/* Header Card */}
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-5">
                   <div>
-                    <p className="font-bold text-lg text-gray-900">{dispute.number}</p>
-                    <p className="text-sm text-gray-600 font-medium flex items-center gap-1 mt-1">
-                      Báo cáo liên quan: <span className="text-blue-600 hover:underline cursor-pointer">{dispute.report}</span>
+                    <p className="font-bold text-lg text-gray-900 group-hover:text-emerald-700 transition-colors">{dispute.number}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Báo cáo liên quan: <span className="font-semibold text-emerald-600 cursor-pointer hover:underline">{dispute.report}</span>
                     </p>
                   </div>
-                  <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border ${getStatusColor(dispute.status)}`}>
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${getStatusColor(dispute.status)} shadow-sm`}>
                     {getStatusIcon(dispute.status)}
                     <span>{getStatusLabel(dispute.status)}</span>
                   </div>
                 </div>
 
-                {/* Details */}
-                <div className="space-y-4 mb-4">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                    <div>
-                      <p className="text-sm text-gray-500">Người Khiếu Nại</p>
-                      <p className="font-bold text-gray-900">{dispute.citizen}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">Ngày Tạo</p>
-                      <p className="font-medium text-gray-900">{dispute.createdAt}</p>
-                    </div>
+                {/* Details Grid */}
+                <div className="grid grid-cols-2 gap-4 mb-5 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Người Khiếu Nại</p>
+                    <p className="font-medium text-gray-900">{dispute.citizen}</p>
                   </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Ngày Gửi</p>
+                    <p className="font-medium text-gray-900">{dispute.createdAt}</p>
+                  </div>
+                </div>
 
-                  <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
-                    <p className="text-sm font-semibold text-amber-900 mb-2 flex items-center gap-2">
-                      <MessageSquare size={16} /> Nội dung khiếu nại:
-                    </p>
-                    <p className="text-sm text-amber-800 italic">"{dispute.content}"</p>
-                  </div>
+                {/* Content Box */}
+                <div className="bg-amber-50/50 rounded-xl p-4 border border-amber-100 mb-5">
+                  <p className="text-sm font-bold text-amber-900 mb-2 flex items-center gap-2">
+                    <MessageSquare size={16} className="text-amber-600" /> Nội dung khiếu nại:
+                  </p>
+                  <p className="text-sm text-amber-800 leading-relaxed italic">"{dispute.content}"</p>
                 </div>
 
                 {/* Actions & Responses */}
                 {dispute.status === "pending" ? (
-                  <div className="flex gap-3 pt-4 border-t border-gray-100">
-                    <button 
-                      disabled={actionLoading}
-                      onClick={() => handleAction(dispute.id, "resolve")}
-                      className="flex-1 py-2.5 bg-[#0AA468] hover:bg-[#088F5A] text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <CheckCircle size={18} />
-                      Đồng Ý & Xử Lý
-                    </button>
+                  <div className="flex gap-3 pt-5 border-t border-gray-100">
                     <button 
                       disabled={actionLoading}
                       onClick={() => handleAction(dispute.id, "reject")}
-                      className="flex-1 py-2.5 bg-white border-2 border-red-500 text-red-600 hover:bg-red-50 font-bold rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="flex-1 py-2.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
                     >
                       <XCircle size={18} />
                       Từ Chối
                     </button>
+                    <button 
+                      disabled={actionLoading}
+                      onClick={() => handleAction(dispute.id, "resolve")}
+                      className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm shadow-emerald-200 disabled:opacity-50"
+                    >
+                      <CheckCircle size={18} />
+                      Đồng Ý & Xử Lý
+                    </button>
                   </div>
                 ) : (
-                  <div className="pt-4 border-t border-gray-100">
-                    <div className={`rounded-lg p-4 border ${dispute.status === "resolved" ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
-                      <p className={`text-sm font-semibold mb-1 ${dispute.status === "resolved" ? "text-green-900" : "text-red-900"}`}>
-                        {dispute.status === "resolved" ? "✓ Quyết định giải quyết:" : "✕ Lý do từ chối:"}
+                  <div className="pt-5 border-t border-gray-100">
+                    <div className={`rounded-xl p-4 border ${dispute.status === "resolved" ? "bg-emerald-50/50 border-emerald-200" : "bg-red-50/50 border-red-200"}`}>
+                      <p className={`text-sm font-bold mb-1 flex items-center gap-2 ${dispute.status === "resolved" ? "text-emerald-900" : "text-red-900"}`}>
+                        {dispute.status === "resolved" ? <CheckCircle size={16}/> : <XCircle size={16}/>}
+                        {dispute.status === "resolved" ? "Quyết định giải quyết:" : "Lý do từ chối:"}
                       </p>
-                      <p className={`text-sm ${dispute.status === "resolved" ? "text-green-800" : "text-red-800"}`}>
+                      <p className={`text-sm leading-relaxed ${dispute.status === "resolved" ? "text-emerald-800" : "text-red-800"}`}>
                         {dispute.adminResponse || "Không có phản hồi chi tiết."}
                       </p>
                     </div>
@@ -273,12 +286,28 @@ export const DisputesManagement: React.FC = () => {
               </div>
             ))
           ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-500 font-semibold">Không tìm thấy khiếu nại nào</p>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-16 text-center">
+              <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                <ShieldAlert size={24} className="text-gray-400" />
+              </div>
+              <p className="text-gray-900 font-semibold">Trống</p>
+              <p className="text-gray-500 text-sm mt-1">Không tìm thấy khiếu nại nào phù hợp.</p>
             </div>
           )}
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modal.isOpen}
+        config={modal.config}
+        onConfirm={modal.onConfirm}
+        onCancel={modal.onCancel}
+        isLoading={actionLoading}
+      />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
   );
 };
