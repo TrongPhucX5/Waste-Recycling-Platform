@@ -1,7 +1,7 @@
 // Base API client - wraps fetch with auth header injection and error handling
+import { API_CONFIG } from "./config";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 export class ApiError extends Error {
   constructor(

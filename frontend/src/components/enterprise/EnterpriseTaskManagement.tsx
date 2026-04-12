@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
+import { API_CONFIG } from "@/lib/api/config";
 import {
   Card,
   Button,
@@ -71,7 +72,7 @@ export const EnterpriseTaskManagement: React.FC = () => {
 
   // SignalR Real-time Updates Setup
   useEffect(() => {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:8080";
+    const backendUrl = API_CONFIG.SERVER_URL;
     const newConnection = new HubConnectionBuilder()
       .withUrl(`${backendUrl}/hubs/task`)
       .configureLogging(LogLevel.Information)

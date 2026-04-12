@@ -1,7 +1,5 @@
 import { ApiError, apiClient } from "./client";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+import { API_CONFIG } from "./config";
 
 export const reportApi = {
   /**
@@ -16,7 +14,7 @@ export const reportApi = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    const res = await fetch(`${API_BASE_URL}/reports/create`, {
+    const res = await fetch(`${API_CONFIG.BASE_URL}/reports/create`, {
       method: "POST",
       headers,
       body: formData,

@@ -1,6 +1,5 @@
 import { ApiError, apiClient } from "./client";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+import { API_CONFIG } from "./config";
 
 export interface TaskReport {
   id: string;
@@ -67,7 +66,7 @@ export const collectorTaskApi = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    const res = await fetch(`${API_BASE_URL}/collector/tasks/${id}/complete`, {
+    const res = await fetch(`${API_CONFIG.BASE_URL}/collector/tasks/${id}/complete`, {
       method: "PUT",
       headers,
       body: formData,

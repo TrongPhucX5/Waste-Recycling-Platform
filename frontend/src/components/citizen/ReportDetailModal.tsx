@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { X, MapPin, Clock, AlignLeft, Lightbulb, Image as ImageIcon, Map } from "lucide-react";
+import { API_CONFIG } from "@/lib/api/config";
 import { reportApi } from "../../lib/api/reportApi";
 
 interface ReportDetailModalProps {
@@ -136,8 +137,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId, 
                   {report.imageUrls && report.imageUrls.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {report.imageUrls.map((fileName: string, index: number) => {
-                        const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
-                        const fileUrl = API_URL.replace("/api", `/uploads/${fileName}`);
+                        const fileUrl = `${API_CONFIG.SERVER_URL}/uploads/${fileName}`;
                         
                         return (
                           <div 

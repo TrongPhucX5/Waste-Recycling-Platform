@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { API_CONFIG } from "@/lib/api/config";
 import { Search, AlertCircle, CheckCircle, XCircle, MessageSquare, ShieldAlert } from "lucide-react";
 import { ConfirmationModal, useConfirmation } from "../shared/ConfirmationModal";
 import { ToastContainer, useToast } from "../shared/Toast";
@@ -33,7 +34,7 @@ export const DisputesManagement: React.FC = () => {
       const token = localStorage.getItem("token") || "";
 
       // Khởi tạo URL với phân trang cơ bản
-      let url = "http://localhost:8080/api/admin/complaints?page=1&pageSize=100";
+      let url = `${API_CONFIG.BASE_URL}/admin/complaints?page=1&pageSize=100`;
       
       // Nếu có tìm kiếm thì thêm vào URL để Backend xử lý
       if (searchTerm.trim() !== "") {
@@ -114,7 +115,7 @@ export const DisputesManagement: React.FC = () => {
       setActionLoading(true);
       const token = localStorage.getItem("token") || "";
       
-      const url = `http://localhost:8080/api/admin/complaints/${id}/${action}`;
+      const url = `${API_CONFIG.BASE_URL}/admin/complaints/${id}/${action}`;
 
       const response = await fetch(url, {
         method: "POST",

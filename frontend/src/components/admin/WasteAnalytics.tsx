@@ -26,6 +26,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { API_CONFIG } from "@/lib/api/config";
 
 const COLORS = ["#0AA468", "#F59E0B", "#3B82F6", "#8B5CF6", "#EF4444", "#10B981"];
 
@@ -78,7 +79,7 @@ export const WasteAnalytics: React.FC = () => {
           throw new Error("Không tìm thấy token xác thực");
         }
 
-        const response = await fetch("http://localhost:8080/api/admin/analytics/reports", {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/admin/analytics/reports`, {
           headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"

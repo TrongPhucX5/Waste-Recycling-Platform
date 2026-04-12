@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { API_CONFIG } from "@/lib/api/config";
 import Link from "next/link";
 import { PlusCircle, FileText, Trophy, TrendingUp, Clock, CheckCircle, Camera, MapPin, Users, Award, Target, Crown, Medal } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext"; // Dùng để nhận diện user
@@ -53,7 +54,7 @@ export default function CitizenDashboardPage() {
   useEffect(() => {
     const fetchTopLeaders = async () => {
       try {
-        const response = await fetch("http://localhost:8080/api/citizens/rewards/leaderboard?page=1&pageSize=3");
+        const response = await fetch(`${API_CONFIG.BASE_URL}/citizens/rewards/leaderboard?page=1&pageSize=3`);
         if (response.ok) {
           const json = await response.json();
           const formatted = (json.data || []).map((item: any, index: number) => {

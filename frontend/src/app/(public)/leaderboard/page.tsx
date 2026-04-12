@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useMemo, useEffect } from "react";
-import { Trophy, Users, MapPin, Calendar, Crown, ArrowLeft, Star } from "lucide-react"; 
+import { Trophy, Users, MapPin, Calendar, Crown, ArrowLeft, Star } from "lucide-react";
+import { API_CONFIG } from "@/lib/api/config";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation"; // Import thêm useRouter để làm chức năng Quay Lại
 
@@ -50,7 +51,7 @@ export default function LeaderboardPage() {
     const fetchIndividualLeaderboard = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:8080/api/citizens/rewards/leaderboard?page=1&pageSize=10");
+        const response = await fetch(`${API_CONFIG.BASE_URL}/citizens/rewards/leaderboard?page=1&pageSize=10`);
         if (response.ok) {
           const json = await response.json();
           const apiData = json.data || [];
@@ -86,7 +87,7 @@ export default function LeaderboardPage() {
 
     const fetchAreaLeaderboard = async () => {
       try {
-        const response = await fetch("http://localhost:8080/api/citizens/rewards/leaderboard/area?page=1&pageSize=10");
+        const response = await fetch(`${API_CONFIG.BASE_URL}/citizens/rewards/leaderboard/area?page=1&pageSize=10`);
         if (response.ok) {
           const json = await response.json();
           const apiData = json.data || [];
