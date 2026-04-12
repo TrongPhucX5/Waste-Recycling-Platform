@@ -28,6 +28,7 @@ public class ReportRepository : IReportRepository
             .Include(r => r.WasteCategory)
             .Include(r => r.Images)
             .Include(r => r.RewardPoints)
+            .Include(r => r.CollectionTask)
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
     }
 

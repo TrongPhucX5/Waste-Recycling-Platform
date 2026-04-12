@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using WastePlatform.API.Hubs;
 using WastePlatform.Application.Admin.Complaints.Commands;
 using WastePlatform.Application.Admin.Complaints.DTOs;
 using WastePlatform.Application.Admin.Complaints.Queries;
@@ -13,10 +15,12 @@ namespace WastePlatform.API.Controllers;
 public class AdminComplaintsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IHubContext<TaskHub> _hubContext;
 
-    public AdminComplaintsController(IMediator mediator)
+    public AdminComplaintsController(IMediator mediator, IHubContext<TaskHub> hubContext)
     {
         _mediator = mediator;
+        _hubContext = hubContext;
     }
 
     /// <summary>Get all complaints with pagination and filtering</summary>
@@ -90,14 +94,34 @@ public class AdminComplaintsController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.AdminResponse))
                 return BadRequest(new { message = "Admin response is required" });
 
-            var result = await _mediator.Send(new ResolveComplaintCommand 
-            { 
-                ComplaintId = id, 
-                AdminResponse = request.AdminResponse 
+            var result = await _mediator.Send(new ResolveComplaintCommand
+            {
+                ComplaintId = id,
+                AdminResponse = request.AdminResponse
             });
 
             if (!result.Success)
                 return NotFound(new { message = result.Message });
+
+            // Send SignalR notification to reporting citizen
+            try
+            {
+                // retrieve complaint to know reporter id
+                var complaint = await _mediator.Send(new WastePlatform.Application.Complaints.Queries.GetComplaintByIdQuery { Id = id });
+                if (complaint != null)
+                {
+                    await _hubContext.Clients.User(complaint.CitizenId.ToString()).SendAsync("ComplaintResolved", new
+                    {
+                        complaintId = id,
+                        message = "Your complaint has been resolved",
+                        adminResponse = request.AdminResponse
+                    });
+                }
+            }
+            catch
+            {
+                // best-effort
+            }
 
             return Ok(new
             {

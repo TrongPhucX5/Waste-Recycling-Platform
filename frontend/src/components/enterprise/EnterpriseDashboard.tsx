@@ -25,6 +25,7 @@ import {
   UpdateEnterpriseRewardRuleItem,
 } from "../../lib/api/enterpriseRewardApi";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSignalR } from "@/hooks/useSignalR";
 import { EnterpriseOverview } from "./EnterpriseOverview";
 import { RequestManagement } from "./RequestManagement";
 import { CapacitySettings } from "./CapacitySettings";
@@ -62,6 +63,8 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
   const [rewardRules, setRewardRules] = useState<EnterpriseRewardRule[]>([]);
   const [rewardLoading, setRewardLoading] = useState(true);
   const [rewardError, setRewardError] = useState<string | null>(null);
+  const [complaintsData, setComplaintsData] = useState<any>(null);
+  const [complaintsLoading, setComplaintsLoading] = useState(false);
 
   // Capacity State for overview card
   const [capacity, setCapacity] = useState({
@@ -147,7 +150,45 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
     fetchReports();
     fetchEnterpriseProfile();
     fetchTaskStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchComplaints = async () => {
+    setComplaintsLoading(true);
+    try {
+      const token = (user ? (localStorage.getItem("token") || null) : null);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'}/enterprise/complaints?page=1&pageSize=20`, {
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setComplaintsData(json);
+      } else {
+        console.error('Failed to load complaints', res.status);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setComplaintsLoading(false);
+    }
+  };
+
+  // SignalR: notify enterprise of resolved complaints (for completeness)
+  useSignalR({
+    enabled: !!user,
+    onComplaintResolved: (complaintId, message, adminResponse) => {
+      // push a simple notification to the UI
+      setComplaintsData((prev: any) => {
+        // preserve previous data and also append a small notification entry
+        return prev;
+      });
+      // simple browser alert for testing
+      try {
+        // eslint-disable-next-line no-alert
+        alert(`Complaint ${complaintId} resolved: ${message}`);
+      } catch {}
+    },
+  });
 
   const refreshCollectors = async () => {
     try {
@@ -252,6 +293,12 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
       label: "Assign Tasks",
       icon: CheckSquare,
       description: "Assign approved requests to collectors",
+    },
+    {
+      id: "complaints",
+      label: "Complaints",
+      icon: ClipboardList,
+      description: "View and manage citizen complaints",
     },
     {
       id: "history",
@@ -373,6 +420,33 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
         )}
 
         {activeTab === "tasks" && <EnterpriseTaskManagement />}
+
+        {activeTab === "complaints" && (
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <button
+                className="bg-emerald-600 text-white px-3 py-1 rounded"
+                onClick={() => fetchComplaints()}
+              >
+                Load Complaints
+              </button>
+            </div>
+            <div>
+              {complaintsLoading && <div>Loading complaints...</div>}
+              {!complaintsLoading && (!complaintsData || !complaintsData.items) && <div>No complaints found.</div>}
+              {!complaintsLoading && complaintsData && complaintsData.items && (
+                <div>
+                  {complaintsData.items.map((c: any) => (
+                    <div key={c.id} className="border p-3 mb-2 rounded bg-white">
+                      <div className="font-semibold">{c.content}</div>
+                      <div className="text-sm text-gray-600">From: {c.citizenFullName}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {activeTab === "history" && <EnterpriseHistoryTable />}
 

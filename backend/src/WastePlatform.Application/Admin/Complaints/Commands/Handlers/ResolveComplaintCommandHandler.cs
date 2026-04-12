@@ -1,6 +1,7 @@
 using MediatR;
 using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Application.Admin.Complaints.Commands;
+// SignalR notifications are sent from API layer/controller
 
 namespace WastePlatform.Application.Admin.Complaints.Commands.Handlers;
 
@@ -30,6 +31,8 @@ public class ResolveComplaintCommandHandler : IRequestHandler<ResolveComplaintCo
         complaint.Resolve(request.AdminResponse);
 
         await _complaintRepository.SaveChangesAsync(cancellationToken);
+
+
 
         return new ResolveComplaintResult
         {

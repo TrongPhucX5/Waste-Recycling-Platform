@@ -77,6 +77,30 @@ public class ComplaintRepository : IComplaintRepository
         return (complaints, total);
     }
 
+    public async Task<(IEnumerable<Complaint> Complaints, int Total)> GetByEnterpriseIdAsync(Guid enterpriseId, int page, int pageSize, ComplaintStatus? status, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Complaints
+            .Where(c => c.EnterpriseId == enterpriseId)
+            .Include(c => c.Citizen)
+            .Include(c => c.WasteReport)
+            .AsQueryable();
+
+        if (status.HasValue)
+        {
+            query = query.Where(c => c.Status == status.Value);
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+
+        var complaints = await query
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (complaints, total);
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         await _context.SaveChangesAsync(cancellationToken);

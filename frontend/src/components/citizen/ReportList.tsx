@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { Clock, CheckCircle2, Truck, AlertCircle, MessageSquare, MapPin } from "lucide-react";
 import { reportApi } from "../../lib/api/reportApi";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
 import { ReportDetailModal } from "./ReportDetailModal";
 
 type ReportStatus = "Pending" | "Accepted" | "Assigned" | "Collected";
@@ -24,9 +26,12 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 export const ReportList: React.FC = () => {
   const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [feedbackTexts, setFeedbackTexts] = useState<Record<string,string>>({});
   const [reports, setReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { token } = useAuth();
+  const { addToast } = useToast();
 
   useEffect(() => {
     loadReports();
@@ -139,10 +144,46 @@ export const ReportList: React.FC = () => {
                     className="w-full text-sm rounded-lg border-gray-200 border p-3 focus:ring-2 focus:ring-red-500 outline-none resize-none bg-white"
                     rows={2}
                     placeholder="Ví dụ: Người thu gom đến trễ hơn cam kết, thái độ không tốt..."
+                    value={feedbackTexts[report.id] ?? ''}
+                    onChange={(e) => setFeedbackTexts(prev => ({ ...prev, [report.id]: e.target.value }))}
                   ></textarea>
                   <div className="flex justify-end gap-2 mt-3">
                     <button onClick={() => setFeedbackOpen(null)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Hủy</button>
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm shadow-red-500/30">Gửi Phản Hồi</button>
+                    <button
+                      onClick={async () => {
+                        const content = feedbackTexts[report.id] ?? '';
+                        if (!content || content.trim().length === 0) {
+                          addToast('Nội dung khiếu nại/ phản hồi không được để trống', 'error');
+                          return;
+                        }
+                        if (!token) {
+                          addToast('Bạn cần đăng nhập để gửi khiếu nại', 'error');
+                          return;
+                        }
+                        try {
+                          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'}/complaints`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ content, reportId: report.id }),
+                          });
+                          if (!res.ok) {
+                            const body = await res.json().catch(() => ({}));
+                            addToast(body?.message || 'Gửi khiếu nại thất bại', 'error');
+                            return;
+                          }
+                          addToast('Gửi khiếu nại thành công', 'success');
+                          setFeedbackOpen(null);
+                          // optionally refresh reports or complaints
+                          loadReports();
+                        } catch (e) {
+                          console.error(e);
+                          addToast('Lỗi khi gửi khiếu nại', 'error');
+                        }
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm shadow-red-500/30"
+                    >
+                      Gửi Phản Hồi
+                    </button>
                   </div>
                 </div>
               )}

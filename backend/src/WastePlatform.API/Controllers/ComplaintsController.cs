@@ -38,7 +38,8 @@ public class ComplaintsController : ControllerBase
             {
                 CitizenId = userId,
                 Content = dto.Content,
-                ReportId = dto.ReportId
+                ReportId = dto.ReportId,
+                EnterpriseId = dto.EnterpriseId
             });
 
             var complaint = await _mediator.Send(new GetComplaintByIdQuery { Id = complaintId });

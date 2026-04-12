@@ -4,10 +4,11 @@ import * as signalR from '@microsoft/signalr';
 interface UseSignalRProps {
   enabled: boolean;
   onTaskStatusUpdated?: (taskId: string, status: string) => void;
+  onComplaintResolved?: (complaintId: string, message: string, adminResponse: string) => void;
   onError?: (error: Error) => void;
 }
 
-export const useSignalR = ({ enabled, onTaskStatusUpdated, onError }: UseSignalRProps) => {
+export const useSignalR = ({ enabled, onTaskStatusUpdated, onComplaintResolved, onError }: UseSignalRProps) => {
   const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
 
   useEffect(() => {
@@ -29,6 +30,18 @@ export const useSignalR = ({ enabled, onTaskStatusUpdated, onError }: UseSignalR
           if (onTaskStatusUpdated) {
             connection.on('ReceiveTaskUpdate', (taskId: string, status: string) => {
               onTaskStatusUpdated(taskId, status);
+            });
+          }
+          if (onComplaintResolved) {
+            connection.on('ComplaintResolved', (payload: any) => {
+              const complaintId = payload?.complaintId ?? payload?.id ?? '';
+              const message = payload?.message ?? '';
+              const adminResponse = payload?.adminResponse ?? '';
+              try {
+                onComplaintResolved(complaintId, message, adminResponse);
+              } catch (e) {
+                console.error('onComplaintResolved handler error', e);
+              }
             });
           }
         })

@@ -316,15 +316,29 @@ public class WastePlatformDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CitizenId).HasColumnName("citizen_id");
+            entity.Property(e => e.EnterpriseId).HasColumnName("enterprise_id");
+            entity.Property(e => e.CollectorId).HasColumnName("collector_id");
             entity.Property(e => e.ReportId).HasColumnName("report_id");
             entity.Property(e => e.Content).HasColumnName("content").HasMaxLength(2000);
             entity.Property(e => e.AdminResponse).HasColumnName("admin_response").HasMaxLength(2000);
             entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.ResolvedAt).HasColumnName("resolved_at").IsRequired(false);
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired(false);
             
             entity.HasOne(e => e.Citizen)
                 .WithMany(u => u.Complaints)
                 .HasForeignKey(e => e.CitizenId);
+
+            entity.HasOne<Enterprise>()
+                .WithMany()
+                .HasForeignKey(e => e.EnterpriseId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<Collector>()
+                .WithMany()
+                .HasForeignKey(e => e.CollectorId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasOne(e => e.WasteReport)
                 .WithMany(r => r.Complaints)

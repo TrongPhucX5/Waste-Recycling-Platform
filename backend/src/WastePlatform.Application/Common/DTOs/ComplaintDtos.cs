@@ -7,6 +7,7 @@ public class CreateComplaintDto
 {
     public string Content { get; set; } = null!;
     public Guid? ReportId { get; set; }
+    public Guid? EnterpriseId { get; set; }
 }
 
 /// <summary>DTO for complaint details - used by admin and citizen</summary>

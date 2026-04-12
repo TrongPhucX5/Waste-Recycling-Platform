@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { AuthProvider } from '@/contexts/AuthContext'
+import ClientProviders from '@/components/ClientProviders'
 
 export const metadata: Metadata = {
     title: 'Waste Collection Platform',
@@ -16,9 +16,9 @@ export default function RootLayout({
     return (
         <html lang="vi">
             <body className="antialiased">
-                <AuthProvider>
+                <ClientProviders>
                     {children}
-                </AuthProvider>
+                </ClientProviders>
             </body>
         </html>
     )
