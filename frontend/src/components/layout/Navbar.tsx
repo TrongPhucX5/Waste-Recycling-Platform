@@ -58,7 +58,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     const collectorMenu = [
       { label: "Bảng Điều Khiển", href: "/collector/dashboard" },
       { label: "Tuyến Đường", href: "/collector/routes" },
-      { label: "Thu Gom", href: "/collector/collection" },
     ];
 
     const enterpriseMenu = [
