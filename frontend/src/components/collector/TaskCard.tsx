@@ -18,15 +18,24 @@ const statusColors: Record<string, "warning" | "info" | "success" | "default"> =
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateStatus }) => {
   const router = useRouter();
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "Assigned": return "Đã giao";
+      case "OnTheWay": return "Đang đến nơi";
+      case "Collected": return "Đã thu gom";
+      default: return status.replace(/_/g, " ");
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-3">
         <div>
-          <h3 className="font-semibold text-gray-800">{task.report.categoryName || "Unknown Waste"}</h3>
-          <p className="text-sm text-gray-500">From: {task.report.citizenName}</p>
+          <h3 className="font-semibold text-gray-800">{task.report.categoryName || "Chưa phân loại"}</h3>
+          <p className="text-sm text-gray-500">Từ: {task.report.citizenName}</p>
         </div>
         <Badge variant={statusColors[task.status] || "default"}>
-          {task.status.replace(/_/g, " ")}
+          {getStatusLabel(task.status)}
         </Badge>
       </div>
 
@@ -37,7 +46,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateStatus }) => {
         </div>
         <div className="flex items-center text-sm text-gray-600">
           <Clock className="h-4 w-4 mr-2 text-gray-400" />
-          Assigned: {new Date(task.assignedAt).toLocaleString()}
+          Ngày giao: {new Date(task.assignedAt).toLocaleString()}
         </div>
       </div>
 

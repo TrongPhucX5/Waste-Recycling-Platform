@@ -19,11 +19,11 @@ export default function TaskDetailPage() {
     if (params.id) {
       collectorTaskApi.getTaskById(params.id as string)
         .then(res => setTask(res))
-        .catch(() => alert("Failed to load task details"));
+        .catch(() => alert("Không thể tải thông tin nhiệm vụ"));
     }
   }, [params.id]);
 
-  if (!task) return <div className="p-8 text-center text-gray-500 mt-20">Loading task details...</div>;
+  if (!task) return <div className="p-8 text-center text-gray-500 mt-20">Đang tải thông tin nhiệm vụ...</div>;
 
   const handleStartPickup = async () => {
     try {
@@ -31,13 +31,13 @@ export default function TaskDetailPage() {
       window.location.reload(); 
     } catch (err: any) {
       console.error(err);
-      alert(`Failed to update status: ${err.message || JSON.stringify(err.data)}`);
+      alert(`Không thể cập nhật trạng thái: ${err.message || JSON.stringify(err.data)}`);
     }
   };
 
   const handleComplete = async () => {
-    if (!weightKg) return alert("Please enter weight (kg)");
-    if (!image) return alert("Please upload a proof image");
+    if (!weightKg) return alert("Vui lòng nhập khối lượng (kg)");
+    if (!image) return alert("Vui lòng tải lên hình ảnh xác minh");
     
     try {
       const formData = new FormData();
@@ -48,7 +48,7 @@ export default function TaskDetailPage() {
       await collectorTaskApi.completeTask(task.id, formData);
       window.location.reload();
     } catch (err: any) {
-      alert(`Failed to complete task: ${err.message || JSON.stringify(err.data)}`);
+      alert(`Không thể hoàn thành nhiệm vụ: ${err.message || JSON.stringify(err.data)}`);
     }
   };
 
@@ -137,53 +137,83 @@ export default function TaskDetailPage() {
           </div>
         )}
 
-        {/* WRP-110: Update Task Status Section */}
-        <div className="bg-emerald-50 rounded-lg p-6 shadow-sm border border-emerald-100">
-          <h3 className="font-semibold text-lg mb-4 text-emerald-900 border-b border-emerald-200 pb-2">Cập nhật tiến độ nhiệm vụ</h3>
+        {/* Collector Images Section */}
+        {task.status === "Collected" && task.images && task.images.length > 0 && (
+          <div className="bg-white shadow-sm rounded-lg p-6 mb-6 border border-emerald-200">
+            <h3 className="font-semibold text-lg mb-4 text-emerald-800 border-b border-emerald-100 pb-2 flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-emerald-500" /> 
+              Hình ảnh đã thu gom ({task.images.length})
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {task.images.map((fileName: string, index: number) => {
+                const fileUrl = fileName.startsWith("http") ? fileName : `${API_CONFIG.SERVER_URL}${fileName}`;
+                return (
+                  <div 
+                    key={index}
+                    onClick={() => setSelectedImage(fileUrl)}
+                    className="aspect-square bg-emerald-50 rounded-lg overflow-hidden border border-emerald-200 cursor-pointer hover:border-emerald-500 transition-colors group relative"
+                  >
+                    <img 
+                      src={fileUrl} 
+                      alt={`Collection image ${index + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23f3f4f6"/><text x="50%" y="50%" font-family="sans-serif" font-size="12" fill="%239ca3af" text-anchor="middle" dominant-baseline="middle">Lỗi</text></svg>';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <ImageIcon className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" size={24} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Update Task Status Section */}
+        <div className="bg-white shadow-sm rounded-lg p-6 mb-6 border border-gray-200">
+          <h3 className="font-semibold text-lg mb-4 text-emerald-900 border-b pb-2">Cập nhật tiến độ nhiệm vụ</h3>
           
-          {task.status.toLowerCase() === "assigned" && (
-            <div className="space-y-4">
-              <p className="text-emerald-800 text-sm">Bạn đã được phân công thu gom rác thải này. Khi bạn đã sẵn sàng di chuyển đến địa điểm, vui lòng nhấn cập nhật trạng thái.</p>
-              <Button onClick={handleStartPickup} className="bg-emerald-600 hover:bg-emerald-700">
-                Bắt đầu đi lấy rác (Đang trên đường)
+          {task.status === "Assigned" && (
+            <div className="space-y-4 max-w-md">
+              <p className="text-sm text-gray-500">Bạn đã được phân công thu gom rác thải này. Vui lòng cập nhật trạng thái khi bạn bắt đầu di chuyển.</p>
+              <Button onClick={handleStartPickup} className="w-full">
+                Bắt đầu di chuyển (Đang đến nơi)
               </Button>
             </div>
           )}
 
-          {task.status.toLowerCase() === "ontheway" && (
-            <div className="space-y-5 max-w-md bg-white p-5 rounded border border-emerald-100">
-              <p className="text-sm text-gray-600">Vui lòng cung cấp thông tin thu gom để hoàn tất nhiệm vụ này.</p>
+          {task.status === "OnTheWay" && (
+            <div className="space-y-4 max-w-md">
+              <p className="text-sm text-gray-500">Vui lòng nhập khối lượng và hình ảnh xác minh để hoàn thành nhiệm vụ.</p>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">Khối lượng thu gom (kg) *</label>
-                <Input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)} required placeholder="VD: 15.5" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Khối lượng (kg) *</label>
+                <Input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)} required />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">Hình ảnh xác nhận thu gom *</label>
-                <input type="file" accept="image/*" onChange={e => setImage(e.target.files?.[0] || null)} className="block w-full text-sm mt-1 file:py-2 file:px-4 file:border-0 file:rounded-md file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh xác minh *</label>
+                <input type="file" onChange={e => setImage(e.target.files?.[0] || null)} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">Ghi chú (Tùy chọn)</label>
-                <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Nhập vấn đề phát sinh hoặc thông tin thêm..." />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú thêm</label>
+                <Input value={notes} onChange={e => setNotes(e.target.value)} />
               </div>
-              <Button onClick={handleComplete} className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50" disabled={!weightKg || !image}>
-                Hoàn thành nhiệm vụ (Đã thu gom)
+              <Button onClick={handleComplete} className="w-full" disabled={!weightKg || !image}>
+                Hoàn thành thu gom (Đã thu gom)
               </Button>
             </div>
           )}
 
-          {task.status.toLowerCase() === "collected" && (
-            <div>
-              <p className="text-emerald-700 font-medium flex items-center bg-white p-3 rounded inline-flex border border-emerald-200">
-                <CheckCircle className="w-5 h-5 mr-2 text-emerald-500" />
-                Nhiệm vụ này đã được hoàn thành!
-              </p>
-              {task.collectedWeightKg && (
-                <div className="mt-4 text-sm text-gray-600 bg-white p-4 rounded border border-gray-200">
-                   <p><b>Khối lượng thu gom:</b> {task.collectedWeightKg} kg</p>
-                   {task.notes && <p className="mt-1"><b>Ghi chú:</b> {task.notes}</p>}
-                </div>
-              )}
-            </div>
+          {task.status === "Collected" && (
+             <div className="space-y-4 max-w-md bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+               <div className="flex items-center text-emerald-700 font-medium">
+                  <CheckCircle className="w-5 h-5 mr-2 text-emerald-500" />
+                  Bạn đã hoàn thành nhiệm vụ này.
+               </div>
+               <p className="text-sm text-emerald-600">Khối lượng thu gom: {task.collectedWeightKg} kg</p>
+               {task.notes && <p className="text-sm text-emerald-600">Ghi chú: {task.notes}</p>}
+             </div>
           )}
         </div>
       </div>

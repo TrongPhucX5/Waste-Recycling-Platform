@@ -25,6 +25,8 @@ export interface CollectionTask {
   assignedAt: string;
   completedAt: string | null;
   report: TaskReport;
+  images?: string[];
+  statusLogs?: { status: string; changedAt: string }[];
 }
 
 export interface CollectorStats {

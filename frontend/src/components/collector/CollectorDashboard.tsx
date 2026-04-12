@@ -57,13 +57,13 @@ export const CollectorDashboard: React.FC = () => {
       closeModal();
     } catch (err) {
       console.error(err);
-      alert("Failed to update task status.");
+      alert("Cập nhật trạng thái thất bại.");
     }
   };
 
   const handleCompleteCollection = async (id: string) => {
     if (!weightKg || isNaN(Number(weightKg))) {
-      alert("Please enter a valid weight.");
+      alert("Vui lòng nhập khối lượng hợp lệ.");
       return;
     }
 
@@ -80,7 +80,7 @@ export const CollectorDashboard: React.FC = () => {
       closeModal();
     } catch (err) {
       console.error(err);
-      alert("Failed to complete task.");
+      alert("Hoàn thành nhiệm vụ thất bại.");
     }
   };
 
@@ -90,13 +90,13 @@ export const CollectorDashboard: React.FC = () => {
     if (selectedTask.status === "Assigned") {
       return (
         <div className="space-y-4">
-          <p className="text-gray-600">You are about to start pickup for task <b>#{selectedTask.id.substring(0,8)}</b>.</p>
+          <p className="text-gray-600">Bạn chuẩn bị bắt đầu thu gom cho nhiệm vụ <b>#{selectedTask.id.substring(0,8)}</b>.</p>
           <div className="bg-blue-50 p-4 rounded-md text-sm text-blue-700">
-             Ensure you have the necessary equipment and vehicle ready before proceeding.
+             Vui lòng đảm bảo bạn đã chuẩn bị phương tiện và dụng cụ cần thiết.
           </div>
           <div className="flex justify-end gap-2 mt-6">
-            <Button variant="outline" onClick={closeModal}>Cancel</Button>
-            <Button onClick={() => handleSetOnTheWay(selectedTask.id)}>Confirm Start</Button>
+            <Button variant="outline" onClick={closeModal}>Hủy</Button>
+            <Button onClick={() => handleSetOnTheWay(selectedTask.id)}>Xác nhận Bắt đầu</Button>
           </div>
         </div>
       );
@@ -105,21 +105,21 @@ export const CollectorDashboard: React.FC = () => {
     if (selectedTask.status === "OnTheWay") {
       return (
         <div className="space-y-4">
-          <p className="text-gray-600">Complete collection for task <b>#{selectedTask.id.substring(0,8)}</b>.</p>
+          <p className="text-gray-600">Hoàn thành thu gom cho nhiệm vụ <b>#{selectedTask.id.substring(0,8)}</b>.</p>
           
           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg) *</label>
+             <label className="block text-sm font-medium text-gray-700 mb-1">Khối lượng (kg) *</label>
              <Input 
                type="number"
                value={weightKg} 
                onChange={(e) => setWeightKg(e.target.value)} 
-               placeholder="e.g. 25" 
+               placeholder="ví dụ: 25" 
                required
              />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Proof of Collection (Image)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh xác nhận thu gom</label>
             <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-emerald-500 transition-colors cursor-pointer bg-gray-50">
                <div className="space-y-1 text-center">
                  <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
@@ -127,33 +127,33 @@ export const CollectorDashboard: React.FC = () => {
                  </svg>
                  <div className="flex text-sm text-gray-600">
                    <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-emerald-500">
-                     <span>Upload a file</span>
+                     <span>Tải tệp lên</span>
                      <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCollectionImage(e.target.files?.[0] || null)} />
                    </label>
-                   <p className="pl-1">or drag and drop</p>
+                   <p className="pl-1">hoặc kéo thả</p>
                  </div>
-                 <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                 <p className="text-xs text-gray-500">PNG, JPG, GIF tối đa 10MB</p>
                </div>
             </div>
-            {collectionImage && <p className="text-sm text-emerald-600 mt-2">Selected: {collectionImage.name}</p>}
+            {collectionImage && <p className="text-sm text-emerald-600 mt-2">Đã chọn: {collectionImage.name}</p>}
           </div>
 
           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+             <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú (Tùy chọn)</label>
              <Input 
                value={confirmNote} 
                onChange={(e) => setConfirmNote(e.target.value)} 
-               placeholder="Additional notes about collection..." 
+               placeholder="Nhập vấn đề phát sinh hoặc thông tin thêm..." 
              />
           </div>
 
           <div className="flex justify-end gap-2 mt-6">
-            <Button variant="outline" onClick={closeModal}>Cancel</Button>
+            <Button variant="outline" onClick={closeModal}>Hủy</Button>
             <Button 
                 onClick={() => handleCompleteCollection(selectedTask.id)}
                 disabled={!collectionImage || !weightKg}
             >
-                Complete Collection
+                Hoàn thành nhiệm vụ
             </Button>
           </div>
         </div>
@@ -166,34 +166,34 @@ export const CollectorDashboard: React.FC = () => {
            <div className="bg-emerald-50 p-4 rounded-md flex items-start gap-3">
               <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
               <div>
-                 <h4 className="text-sm font-medium text-emerald-800">Task Completed</h4>
+                 <h4 className="text-sm font-medium text-emerald-800">Đã hoàn thành nhiệm vụ</h4>
                  <p className="text-sm text-emerald-700 mt-1">
-                    This task has been successfully collected and recorded.
+                    Nhiệm vụ này đã được thu gom và ghi nhận thành công.
                  </p>
               </div>
            </div>
            
            <div className="grid grid-cols-2 gap-4 text-sm">
              <div>
-                <span className="text-gray-500 block">Type</span>
+                <span className="text-gray-500 block">Loại rác</span>
                 <span className="font-medium">{selectedTask.report.categoryName}</span>
              </div>
              <div>
-                <span className="text-gray-500 block">Quantity</span>
+                <span className="text-gray-500 block">Khối lượng</span>
                 <span className="font-medium">{selectedTask.collectedWeightKg} kg</span>
              </div>
               <div>
-                <span className="text-gray-500 block">Location</span>
+                <span className="text-gray-500 block">Địa điểm</span>
                 <span className="font-medium truncate">{selectedTask.report.address}</span>
              </div>
              <div>
-                <span className="text-gray-500 block">Completed At</span>
+                <span className="text-gray-500 block">Hoàn thành lúc</span>
                 <span className="font-medium">{new Date(selectedTask.completedAt || "").toLocaleString()}</span>
              </div>
            </div>
 
            <div className="flex justify-end mt-6">
-             <Button variant="outline" onClick={closeModal}>Close</Button>
+             <Button variant="outline" onClick={closeModal}>Đóng</Button>
            </div>
         </div>
        );
@@ -208,7 +208,7 @@ export const CollectorDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">Open Tasks</p>
+                   <p className="text-sm font-medium text-gray-500 uppercase">Nhiệm vụ mở</p>
                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalAssigned}</p>
                 </div>
                 <div className="p-3 bg-blue-50 rounded-full text-blue-600">
@@ -217,7 +217,7 @@ export const CollectorDashboard: React.FC = () => {
             </div>
             <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">On The Way</p>
+                   <p className="text-sm font-medium text-gray-500 uppercase">Đang đến nơi</p>
                    <p className="text-3xl font-bold text-purple-600 mt-1">{stats.totalOnTheWay}</p>
                 </div>
                 <div className="p-3 bg-purple-50 rounded-full text-purple-600">
@@ -226,7 +226,7 @@ export const CollectorDashboard: React.FC = () => {
             </div>
             <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">Completed</p>
+                   <p className="text-sm font-medium text-gray-500 uppercase">Đã thu gom</p>
                    <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.totalCollected}</p>
                 </div>
                 <div className="p-3 bg-emerald-50 rounded-full text-emerald-600">
@@ -235,7 +235,7 @@ export const CollectorDashboard: React.FC = () => {
             </div>
             <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
-                   <p className="text-sm font-medium text-gray-500 uppercase">Total Weight</p>
+                   <p className="text-sm font-medium text-gray-500 uppercase">Tổng khối lượng</p>
                    <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.totalWeightKg} kg</p>
                 </div>
                 <div className="p-3 bg-emerald-50 rounded-full text-emerald-600">
@@ -252,13 +252,13 @@ export const CollectorDashboard: React.FC = () => {
                     onClick={() => setActiveTab("tasks")}
                     className={`pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "tasks" ? "border-emerald-500 text-emerald-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
                   >
-                    Current Tasks
+                    Nhiệm vụ hiện tại
                   </button>
                   <button 
                     onClick={() => setActiveTab("history")}
                     className={`pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "history" ? "border-emerald-500 text-emerald-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
                   >
-                    History
+                    Lịch sử
                   </button>
                </div>
                
@@ -267,7 +267,7 @@ export const CollectorDashboard: React.FC = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input 
                       type="text" 
-                      placeholder="Search tasks..." 
+                      placeholder="Tìm kiếm nhiệm vụ..." 
                       className="pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-emerald-500 focus:border-emerald-500"
                     />
                  </div>
@@ -277,7 +277,7 @@ export const CollectorDashboard: React.FC = () => {
             <div className="p-6">
                {activeTab === "tasks" ? (
                   loading ? (
-                    <div className="py-12 text-center text-gray-500">Loading tasks...</div>
+                    <div className="py-12 text-center text-gray-500">Đang tải nhiệm vụ...</div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {tasks.map(task => (
@@ -285,7 +285,7 @@ export const CollectorDashboard: React.FC = () => {
                       ))}
                       {tasks.length === 0 && (
                           <div className="col-span-full py-12 text-center text-gray-500">
-                             No tasks assigned at the moment.
+                             Hiện không có nhiệm vụ nào được giao.
                           </div>
                       )}
                     </div>
@@ -300,7 +300,7 @@ export const CollectorDashboard: React.FC = () => {
         <Modal 
           isOpen={isModalOpen}
           onClose={closeModal}
-          title={selectedTask ? `Update Task #${selectedTask.id.substring(0,8)}` : "Task Update"}
+          title={selectedTask ? `Cập nhật nhiệm vụ #${selectedTask.id.substring(0,8)}` : "Cập nhật nhiệm vụ"}
         >
            {renderModalContent()}
         </Modal>

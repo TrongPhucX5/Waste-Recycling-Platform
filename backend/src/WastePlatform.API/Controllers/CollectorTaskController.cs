@@ -260,6 +260,17 @@ public class CollectorTaskController : ControllerBase
             }
 
             // Đồng thời cập nhật trạng thái Report sang Collected
+            // Nếu Report vẫn ở Pending, hãy Accept nó trước
+            if (task.WasteReport.Status == ReportStatus.Pending)
+            {
+                task.WasteReport.Accept();
+            }
+            // Nếu Report ở Accepted, chuyển sang Assigned trước
+            if (task.WasteReport.Status == ReportStatus.Accepted)
+            {
+                task.WasteReport.Assign();
+            }
+            // Bây giờ mới Collect
             task.WasteReport.Collect();
 
             await _context.SaveChangesAsync();
