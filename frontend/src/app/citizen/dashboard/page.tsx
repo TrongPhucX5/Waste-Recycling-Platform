@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { PlusCircle, FileText, Trophy, TrendingUp, Clock, CheckCircle, Camera, MapPin, Users, Award, Target, Crown, Medal } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext"; // Dùng để nhận diện user
 
 interface RecentReport {
   id: string;
@@ -18,7 +19,18 @@ interface Stats {
   thisMonthReports: number;
 }
 
+// Thêm Interface cho Leaderboard
+interface TopLeader {
+  id: string;
+  name: string;
+  points: number;
+  level: string;
+  rank: number;
+}
+
 export default function CitizenDashboardPage() {
+  const { user } = useAuth(); // Lấy thông tin user đăng nhập
+  
   const [stats, setStats] = useState<Stats>({
     currentPoints: 850,
     completedReports: 45,
@@ -33,6 +45,42 @@ export default function CitizenDashboardPage() {
     { id: "4", type: "Rác tái chế", status: "collected", date: "3 ngày trước", points: 15 },
     { id: "5", type: "Rác hữu cơ", status: "pending", date: "4 ngày trước", points: 10 }
   ]);
+
+  const [topLeaders, setTopLeaders] = useState<TopLeader[]>([]);
+  const [loadingLeaders, setLoadingLeaders] = useState(true);
+
+  // Fetch API Top 3 Bảng Xếp Hạng
+  useEffect(() => {
+    const fetchTopLeaders = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/api/citizens/rewards/leaderboard?page=1&pageSize=3");
+        if (response.ok) {
+          const json = await response.json();
+          const formatted = (json.data || []).map((item: any, index: number) => {
+            let level = "Thành viên Đồng";
+            if (item.totalPoints >= 2000) level = "Thành viên Bạch Kim";
+            else if (item.totalPoints >= 1000) level = "Thành viên Vàng";
+            else if (item.totalPoints >= 500) level = "Thành viên Bạc";
+
+            return {
+              id: item.citizenId,
+              name: item.citizenName,
+              points: item.totalPoints,
+              level: level,
+              rank: index + 1
+            };
+          });
+          setTopLeaders(formatted);
+        }
+      } catch (error) {
+        console.error("Lỗi lấy dữ liệu bảng xếp hạng:", error);
+      } finally {
+        setLoadingLeaders(false);
+      }
+    };
+
+    fetchTopLeaders();
+  }, []);
 
   // Simulate real-time updates
   useEffect(() => {
@@ -68,6 +116,16 @@ export default function CitizenDashboardPage() {
 
   const formatNumber = (num: number) => {
     return num.toLocaleString('vi-VN');
+  };
+
+  // Helper để chọn màu cho Top 3
+  const getRankStyle = (rank: number) => {
+    switch (rank) {
+      case 1: return { bg: "bg-yellow-50 border-yellow-200", icon: <Crown className="w-5 h-5 text-yellow-600" />, text: "text-yellow-600" };
+      case 2: return { bg: "bg-slate-50 border-gray-200", icon: <Medal className="w-5 h-5 text-gray-400" />, text: "text-gray-600" };
+      case 3: return { bg: "bg-amber-50 border-amber-200", icon: <Medal className="w-5 h-5 text-amber-600" />, text: "text-amber-600" };
+      default: return { bg: "bg-gray-50 border-gray-100", icon: <Award className="w-5 h-5 text-gray-400" />, text: "text-gray-500" };
+    }
   };
 
   return (
@@ -192,7 +250,7 @@ export default function CitizenDashboardPage() {
           </div>
         </div>
 
-        {/* Mini Leaderboard */}
+        {/* Mini Leaderboard ĐÃ UPDATE LẤY API */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -207,39 +265,34 @@ export default function CitizenDashboardPage() {
             </Link>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-              <div className="flex items-center gap-3">
-                <Crown className="w-5 h-5 text-yellow-600" />
-                <div>
-                  <p className="font-medium text-gray-900">Nguyễn Văn A</p>
-                  <p className="text-xs text-gray-600">Thành viên Bạch Kim</p>
-                </div>
+          <div className="space-y-3">
+            {loadingLeaders ? (
+              <div className="text-center py-6">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600"></div>
               </div>
-              <span className="font-bold text-yellow-600">2,500 đ</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-3">
-                <Medal className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="font-medium text-gray-900">Lê Thị B</p>
-                  <p className="text-xs text-gray-600">Thành viên Vàng</p>
-                </div>
-              </div>
-              <span className="font-bold text-gray-600">1,800 đ</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
-              <div className="flex items-center gap-3">
-                <Medal className="w-5 h-5 text-amber-600" />
-                <div>
-                  <p className="font-medium text-gray-900">Trần Văn C</p>
-                  <p className="text-xs text-gray-600">Thành viên Bạc</p>
-                </div>
-              </div>
-              <span className="font-bold text-amber-600">950 đ</span>
-            </div>
+            ) : topLeaders.length > 0 ? (
+              topLeaders.map((leader) => {
+                const style = getRankStyle(leader.rank);
+                const isMe = user?.id === leader.id; // Check xem có phải user hiện tại không
+                return (
+                  <div key={leader.id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${style.bg} ${isMe ? 'ring-2 ring-emerald-500 ring-offset-1' : ''}`}>
+                    <div className="flex items-center gap-3">
+                      {style.icon}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900">{leader.name}</p>
+                          {isMe && <span className="bg-emerald-500 text-white text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">Bạn</span>}
+                        </div>
+                        <p className="text-xs text-gray-600">{leader.level}</p>
+                      </div>
+                    </div>
+                    <span className={`font-bold ${style.text}`}>{formatNumber(leader.points)} đ</span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center text-gray-500 py-4 text-sm">Chưa có dữ liệu xếp hạng</div>
+            )}
           </div>
         </div>
 
