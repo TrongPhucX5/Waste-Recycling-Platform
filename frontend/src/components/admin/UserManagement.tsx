@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
+import { API_CONFIG } from '@/lib/api/config';
 import { Table } from '../ui/Table';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -33,7 +34,7 @@ export const UserManagement: React.FC = () => {
       if (searchTerm) queryParams.append('search', searchTerm);
       if (roleFilter !== 'all') queryParams.append('role', roleFilter);
 
-      const response = await fetch(`http://localhost:8080/api/admin/users?${queryParams.toString()}`);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/admin/users?${queryParams.toString()}`);
       if (response.ok) {
         const result = await response.json();
         setUsers(result.data || []);
@@ -57,7 +58,7 @@ export const UserManagement: React.FC = () => {
   const executeToggleStatus = async () => {
     setIsToggling(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/admin/users/${confirmModal.userId}/toggle-status`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/admin/users/${confirmModal.userId}/toggle-status`, {
         method: 'PATCH',
       });
       if (response.ok) {
@@ -72,7 +73,7 @@ export const UserManagement: React.FC = () => {
   const executeUpdateRole = async () => {
     setIsUpdatingRole(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/admin/users/${editRoleModal.userId}/role`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/admin/users/${editRoleModal.userId}/role`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newRole: editRoleModal.role })

@@ -9,6 +9,7 @@ using WastePlatform.Infrastructure.Services;
 // Thêm thư mục chứa UserRepository (điều chỉnh lại nếu bạn để thư mục khác nhé)
 using WastePlatform.Infrastructure.Persistence.Repositories; 
 using WastePlatform.API.Hubs;
+using WastePlatform.API.Converters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -79,7 +80,14 @@ builder.Services.AddCors(options =>
 });
 
 // ── Controllers & Swagger ─────────────────────────────────────────────
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Serialize DateTime as UTC (ISO 8601 with 'Z' suffix)
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.Converters.Add(new DateTimeUtcConverter());
+        options.JsonSerializerOptions.Converters.Add(new DateTimeNullableUtcConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(
     options =>

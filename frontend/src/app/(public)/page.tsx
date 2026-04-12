@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { API_CONFIG } from "@/lib/api/config";
 import { 
   ArrowRight, 
   MapPin, 
@@ -27,7 +28,7 @@ export default function Home() {
       try {
         // GỌI API PUBLIC (Không cần Authorization Bearer)
         // TODO: Sửa lại đường dẫn này cho khớp với API C# của ông
-        const response = await fetch("http://localhost:8080/api/public/statistics");
+        const response = await fetch(`${API_CONFIG.BASE_URL}/public/statistics`);
         
         if (response.ok) {
           const json = await response.json();

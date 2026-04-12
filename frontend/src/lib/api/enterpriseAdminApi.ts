@@ -1,3 +1,5 @@
+import { apiClient } from "./client";
+
 export interface EnterpriseListItem {
   id: string;
   companyName: string;
@@ -7,42 +9,25 @@ export interface EnterpriseListItem {
 }
 
 export const enterpriseAdminApi = {
-  getEnterprises: async (page: number, pageSize: number, isVerified?: boolean, search?: string) => {
-    let url = `http://localhost:8080/api/admin/enterprises?page=${page}&pageSize=${pageSize}`;
-    if (isVerified !== undefined) url += `&isVerified=${isVerified}`;
-    if (search) url += `&search=${encodeURIComponent(search)}`;
+  getEnterprises: (page: number, pageSize: number, isVerified?: boolean, search?: string) => {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('pageSize', pageSize.toString());
+    if (isVerified !== undefined) params.append('isVerified', isVerified.toString());
+    if (search) params.append('search', search);
     
-    const token = localStorage.getItem('token');
-    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) throw new Error('Failed to fetch enterprises');
-    return res.json();
+    return apiClient.get<any>(`/admin/enterprises?${params.toString()}`);
   },
   
-  getEnterpriseDetail: async (id: string) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`http://localhost:8080/api/admin/enterprises/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) throw new Error('Failed to fetch enterprise detail');
-    return res.json();
+  getEnterpriseDetail: (id: string) => {
+    return apiClient.get<any>(`/admin/enterprises/${id}`);
   },
 
-  verifyEnterprise: async (id: string) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`http://localhost:8080/api/admin/enterprises/${id}/verify`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Failed to verify enterprise');
-    return res.json();
+  verifyEnterprise: (id: string) => {
+    return apiClient.post<any>(`/admin/enterprises/${id}/verify`, {});
   },
 
-  rejectEnterprise: async (id: string, reason: string) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`http://localhost:8080/api/admin/enterprises/${id}/reject`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason })
-    });
-    if (!res.ok) throw new Error('Failed to reject enterprise');
-    return res.json();
+  rejectEnterprise: (id: string, reason: string) => {
+    return apiClient.post<any>(`/admin/enterprises/${id}/reject`, { reason });
   }
 };

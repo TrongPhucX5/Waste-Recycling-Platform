@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as signalR from '@microsoft/signalr';
+import { API_CONFIG } from '@/lib/api/config';
 
 interface UseSignalRProps {
   enabled: boolean;
@@ -15,7 +16,7 @@ export const useSignalR = ({ enabled, onTaskStatusUpdated, onComplaintResolved, 
     if (!enabled) return;
 
     const newConnection = new signalR.HubConnectionBuilder()
-      .withUrl(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/hubs/notification`)
+      .withUrl(`${API_CONFIG.SERVER_URL}/hubs/notification`)
       .withAutomaticReconnect()
       .build();
 

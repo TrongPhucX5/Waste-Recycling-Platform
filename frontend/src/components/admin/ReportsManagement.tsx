@@ -5,6 +5,7 @@ import { ImageGallery } from "../shared/ImageGallery";
 import { ConfirmationModal, useConfirmation } from "../shared/ConfirmationModal";
 import { ToastContainer, useToast } from "../shared/Toast";
 import { Portal } from "../shared/Portal";
+import { API_CONFIG } from "@/lib/api/config";
 
 interface Report {
   id: string;
@@ -42,7 +43,7 @@ export const ReportsManagement: React.FC = () => {
       setLoading(true);
       const token = localStorage.getItem("token") || ""; 
 
-      const response = await fetch("http://localhost:8080/api/reports/all?page=1&pageSize=100", {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/reports/all?page=1&pageSize=100`, {
         headers: {
           "Authorization": `Bearer ${token}`,
           "Accept": "*/*"
@@ -123,7 +124,7 @@ export const ReportsManagement: React.FC = () => {
     try {
       setActionLoading(true);
       const token = localStorage.getItem("token") || "";
-      const url = `http://localhost:8080/api/reports/${reportId}/accept`;
+      const url = `${API_CONFIG.BASE_URL}/reports/${reportId}/accept`;
 
       const response = await fetch(url, {
         method: "POST",
@@ -154,7 +155,7 @@ export const ReportsManagement: React.FC = () => {
     try {
       setActionLoading(true);
       const token = localStorage.getItem("token") || "";
-      const url = `http://localhost:8080/api/reports/${reportId}/reject`;
+      const url = `${API_CONFIG.BASE_URL}/reports/${reportId}/reject`;
 
       const response = await fetch(url, {
         method: "POST",

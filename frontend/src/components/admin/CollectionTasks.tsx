@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { API_CONFIG } from "@/lib/api/config";
 import { Search, MapPin, User, Clock, X, Weight, FileText } from "lucide-react";
 
 interface Task {
@@ -42,7 +43,7 @@ export const CollectionTasks: React.FC = () => {
       const token = localStorage.getItem("token") || "";
 
       // Gọi API C#
-      const response = await fetch("http://localhost:8080/api/enterprise/tasks", {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/enterprise/tasks`, {
         headers: {
           "Authorization": `Bearer ${token}`,
           "Accept": "*/*"
@@ -88,7 +89,7 @@ export const CollectionTasks: React.FC = () => {
   const fetchCollectors = async () => {
     try {
       const token = localStorage.getItem("token") || "";
-      const response = await fetch("http://localhost:8080/api/enterprise/tasks/collectors", {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/enterprise/tasks/collectors`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
@@ -116,7 +117,7 @@ export const CollectionTasks: React.FC = () => {
     try {
       setAssignLoading(true);
       const token = localStorage.getItem("token") || "";
-      const url = `http://localhost:8080/api/enterprise/tasks/${selectedTask.id}/assign-collector`;
+      const url = `${API_CONFIG.BASE_URL}/enterprise/tasks/${selectedTask.id}/assign-collector`;
 
       const response = await fetch(url, {
         method: "PUT",
