@@ -538,8 +538,8 @@ public class EnterpriseTaskController : ControllerBase
         {
             Status = CollectionTaskStatus.Assigned.ToString(),
             Timestamp = task.AssignedAt,
-            Details = task.Collector != null 
-                ? $"Được phân công cho người thu gom: {task.Collector.User.FullName}" 
+            Details = (task.Collector != null && task.Collector.User != null)
+                ? $"Được phân công cho người thu gom: {task.Collector.User.FullName}"
                 : "Task được khởi tạo, đang chờ phân công"
         });
 
@@ -562,7 +562,7 @@ public class EnterpriseTaskController : ControllerBase
                 eventDto.Details = "Đã thu gom thành công";
                 eventDto.CollectedWeightKg = task.CollectedWeightKg;
                 eventDto.Notes = task.Notes;
-                eventDto.Images = task.Images.Select(img => img.ImageUrl).ToList();
+                eventDto.Images = task.Images?.Select(img => img.ImageUrl).ToList() ?? new List<string>();
             }
 
             // prevent duplicate entry if it's somehow Assigned again (shouldn't happen per business logic but just in case)

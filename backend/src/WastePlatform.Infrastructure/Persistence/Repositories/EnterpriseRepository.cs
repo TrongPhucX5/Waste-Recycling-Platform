@@ -45,20 +45,19 @@ namespace WastePlatform.Infrastructure.Persistence.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-<<<<<<< HEAD
-        public async Task<List<Domain.Entities.Enterprise>> GetEnterprisesByWasteCategoryAsync(int wasteCategoryId, CancellationToken cancellationToken)
+    public async Task<List<Domain.Entities.Enterprise>> GetEnterprisesByWasteCategoryAsync(int wasteCategoryId, CancellationToken cancellationToken)
         {
             return await _context.Enterprises
                 .AsNoTracking()
                 .Include(e => e.WasteTypes)
                 .Where(e => e.WasteTypes.Any(wt => wt.WasteCategoryId == wasteCategoryId))
                 .ToListAsync(cancellationToken);
-=======
+        }
+
         public async Task UpdateAsync(Domain.Entities.Enterprise enterprise, CancellationToken cancellationToken)
         {
             _context.Enterprises.Update(enterprise);
             await _context.SaveChangesAsync(cancellationToken);
->>>>>>> e862492f7ee252a8578b1bdad4edd60a72624682
         }
     }
 }

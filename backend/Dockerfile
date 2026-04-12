@@ -12,8 +12,7 @@ RUN dotnet restore src/WastePlatform.API/WastePlatform.API.csproj
 
 # Copy all source and build
 COPY . .
-WORKDIR /src/src/WastePlatform.API
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish src/WastePlatform.API/WastePlatform.API.csproj -c Release -o /app/publish
 
 # ---- Stage 2: Runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime

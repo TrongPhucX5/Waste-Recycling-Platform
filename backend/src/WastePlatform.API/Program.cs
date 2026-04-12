@@ -10,7 +10,6 @@ using WastePlatform.Infrastructure.Services;
 using WastePlatform.Infrastructure.Persistence.Repositories; 
 using WastePlatform.API.Hubs;
 using WastePlatform.Infrastructure.Hubs;
-using WastePlatform.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
