@@ -32,10 +32,10 @@ export interface LoginRequest {
 
 export const authApi = {
   register: (data: RegisterRequest) =>
-    apiClient.post<AuthResponse>("/api/auth/register", data),
+    apiClient.post<AuthResponse>("/auth/register", data),
 
   login: (data: LoginRequest) =>
-    apiClient.post<AuthResponse>("/api/auth/login", data),
+    apiClient.post<AuthResponse>("/auth/login", data),
 
-  me: () => apiClient.get<AuthUser>("/api/auth/me"),
+  me: () => apiClient.get<AuthUser>("/auth/me"),
 };
