@@ -9,6 +9,7 @@ import {
 } from "../ui";
 import { reportApi } from "../../lib/api/reportApi";
 import { EnterpriseRequest } from "./types";
+import { ReportDetailModal } from "../citizen/ReportDetailModal";
 
 interface RequestManagementProps {
   requests: EnterpriseRequest[];
@@ -28,6 +29,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
   const [selectedCollector, setSelectedCollector] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailReportId, setDetailReportId] = useState<string | null>(null);
 
   const handleAccept = async (reportId: string) => {
     setLoading(true);
@@ -81,6 +83,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
        </div>
        <Table
           data={requests}
+          onRowClick={(row) => setDetailReportId(row.reportId)}
           columns={[
             { label: "ID", key: "reportId" },
             { label: "Type", key: "type" },
@@ -163,6 +166,14 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
            </div>
         </div>
       </Modal>
+
+      {/* Report Detail Modal */}
+      {detailReportId && (
+        <ReportDetailModal
+          reportId={detailReportId}
+          onClose={() => setDetailReportId(null)}
+        />
+      )}
     </Card>
   );
 };

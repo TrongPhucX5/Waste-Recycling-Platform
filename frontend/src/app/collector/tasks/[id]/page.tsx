@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { collectorTaskApi } from "@/lib/api/collectorTaskApi";
+import { API_CONFIG } from "@/lib/api/config";
 import { Button, Input, Badge } from "@/components/ui";
 import { MapPin, User, ArrowLeft, Image as ImageIcon, CheckCircle, Clock } from "lucide-react";
 
@@ -12,6 +13,7 @@ export default function TaskDetailPage() {
   const [weightKg, setWeightKg] = useState("");
   const [notes, setNotes] = useState("");
   const [image, setImage] = useState<File | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.id) {
@@ -101,6 +103,40 @@ export default function TaskDetailPage() {
           </div>
         </div>
 
+        {/* Report Images Section */}
+        {task.report?.imageUrls && task.report.imageUrls.length > 0 && (
+          <div className="bg-white shadow-sm rounded-lg p-6 mb-6 border border-gray-200">
+            <h3 className="font-semibold text-lg mb-4 text-gray-800 border-b pb-2 flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-indigo-500" /> 
+              Hình ảnh từ người dân ({task.report.imageUrls.length})
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {task.report.imageUrls.map((fileName: string, index: number) => {
+                const fileUrl = `${API_CONFIG.SERVER_URL}/uploads/${fileName}`;
+                return (
+                  <div 
+                    key={index}
+                    onClick={() => setSelectedImage(fileUrl)}
+                    className="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:border-emerald-500 transition-colors group relative"
+                  >
+                    <img 
+                      src={fileUrl} 
+                      alt={`Report image ${index + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23f3f4f6"/><text x="50%" y="50%" font-family="sans-serif" font-size="12" fill="%239ca3af" text-anchor="middle" dominant-baseline="middle">Lỗi</text></svg>';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <ImageIcon className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" size={24} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* WRP-110: Update Task Status Section */}
         <div className="bg-emerald-50 rounded-lg p-6 shadow-sm border border-emerald-100">
           <h3 className="font-semibold text-lg mb-4 text-emerald-900 border-b border-emerald-200 pb-2">Cập nhật tiến độ nhiệm vụ</h3>
@@ -151,6 +187,29 @@ export default function TaskDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Full Screen Image Lightbox */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <button 
+            className="absolute top-6 right-6 text-white/70 hover:text-white bg-black/40 hover:bg-black/60 rounded-full p-2 transition-colors"
+            onClick={(e) => { e.stopPropagation(); setSelectedImage(null); }}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img 
+            src={selectedImage} 
+            alt="Full size" 
+            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()} 
+          />
+        </div>
+      )}
     </div>
   );
 }

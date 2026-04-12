@@ -11,6 +11,7 @@ export interface TaskReport {
   categoryName: string | null;
   citizenName: string;
   citizenPhone: string | null;
+  imageUrls: string[];
 }
 
 export interface CollectionTask {

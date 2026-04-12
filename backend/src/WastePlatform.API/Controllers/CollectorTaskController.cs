@@ -104,6 +104,8 @@ public class CollectorTaskController : ControllerBase
                 .ThenInclude(r => r.WasteCategory)
             .Include(t => t.WasteReport)
                 .ThenInclude(r => r.Citizen)
+            .Include(t => t.WasteReport)
+                .ThenInclude(r => r.Images)
             .Include(t => t.Images)
             .Include(t => t.StatusLogs)
             .FirstOrDefaultAsync(t => t.Id == id && t.CollectorId == collector.Id);
@@ -132,7 +134,8 @@ public class CollectorTaskController : ControllerBase
                 Status = task.WasteReport.Status.ToString(),
                 CategoryName = task.WasteReport.WasteCategory?.Name,
                 CitizenName = task.WasteReport.Citizen?.FullName,
-                CitizenPhone = task.WasteReport.Citizen?.Phone
+                CitizenPhone = task.WasteReport.Citizen?.Phone,
+                ImageUrls = task.WasteReport.Images.Select(i => i.ImageUrl).ToList()
             },
             Images = task.Images.Select(i => i.ImageUrl),
             StatusLogs = task.StatusLogs.OrderByDescending(l => l.ChangedAt).Select(l => new 
