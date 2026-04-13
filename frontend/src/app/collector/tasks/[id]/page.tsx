@@ -112,7 +112,7 @@ export default function TaskDetailPage() {
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {task.report.imageUrls.map((fileName: string, index: number) => {
-                const fileUrl = `${API_CONFIG.SERVER_URL}/uploads/${fileName}`;
+                const fileUrl = fileName.startsWith("http") ? fileName : (fileName.startsWith("/") ? `${API_CONFIG.SERVER_URL}${fileName}` : `${API_CONFIG.SERVER_URL}/uploads/${fileName}`);
                 return (
                   <div 
                     key={index}
@@ -145,8 +145,10 @@ export default function TaskDetailPage() {
               Hình ảnh đã thu gom ({task.images.length})
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {task.images.map((fileName: string, index: number) => {
-                const fileUrl = fileName.startsWith("http") ? fileName : `${API_CONFIG.SERVER_URL}${fileName}`;
+              {task.images.map((imgObj: any, index: number) => {
+                // Determine whether task.images contains strings or objects (with ImageUrl)
+                const fileName = typeof imgObj === 'string' ? imgObj : (imgObj.imageUrl || imgObj.ImageUrl || '');
+                const fileUrl = fileName.startsWith("http") ? fileName : (fileName.startsWith("/") ? `${API_CONFIG.SERVER_URL}${fileName}` : `${API_CONFIG.SERVER_URL}/uploads/${fileName}`);
                 return (
                   <div 
                     key={index}

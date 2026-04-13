@@ -230,7 +230,7 @@ public class CollectorTaskController : ControllerBase
             if (images != null && images.Count > 0)
             {
                 var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
-                var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "tasks");
+                var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "tasks");
                 if (!Directory.Exists(uploadFolder))
                     Directory.CreateDirectory(uploadFolder);
 
