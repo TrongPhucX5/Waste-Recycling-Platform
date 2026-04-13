@@ -159,6 +159,9 @@ app.UseStaticFiles(new StaticFileOptions
 // NOTE: No UseHttpsRedirection() — Docker runs plain HTTP on port 8080
 app.UseCors("AllowAll");
 app.UseAuthentication();
+
+app.UseMiddleware<WastePlatform.API.Middleware.ValidateUserStatusMiddleware>();
+
 app.UseAuthorization();
 app.MapControllers();
 

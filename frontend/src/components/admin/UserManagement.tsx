@@ -146,7 +146,8 @@ export const UserManagement: React.FC = () => {
       key: 'actions',
       label: '',
       render: (_: unknown, user: User) => (
-        <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+        // Đã gỡ bỏ opacity-0 để nút luôn hiển thị rõ ràng
+        <div className="flex gap-2 justify-end">
           <button 
             onClick={() => setEditRoleModal({ isOpen: true, userId: user.id, role: user.role })}
             className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-blue-600 transition-colors"
@@ -194,6 +195,7 @@ export const UserManagement: React.FC = () => {
                       <option value="citizen">Người dân</option>
                       <option value="collector">Người thu gom</option>
                       <option value="enterprise">Doanh nghiệp</option>
+                      {/* Vẫn giữ Admin ở Filter để tìm kiếm */}
                       <option value="admin">Quản trị viên</option>
                   </select>
                   <Filter className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" size={16} />
@@ -276,13 +278,17 @@ export const UserManagement: React.FC = () => {
               <div className="space-y-4 mb-8">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] ml-1">Chọn cấp độ truy cập mới</p>
                 <div className="grid grid-cols-1 gap-3">
-                  {['admin', 'enterprise', 'collector', 'citizen'].map((r) => (
+                  {/* Đã gỡ 'admin' ra khỏi tùy chọn cấp quyền */}
+                  {['enterprise', 'collector', 'citizen'].map((r) => (
                     <label key={r} className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${editRoleModal.role === r ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
                       <span className="flex items-center gap-3">
                         <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${editRoleModal.role === r ? 'border-blue-500' : 'border-gray-300'}`}>
                           {editRoleModal.role === r && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
                         </div>
-                        <span className={`text-sm font-bold capitalize ${editRoleModal.role === r ? 'text-blue-700' : 'text-gray-600'}`}>{r}</span>
+                        {/* Translate sang tiếng Việt cho thân thiện */}
+                        <span className={`text-sm font-bold capitalize ${editRoleModal.role === r ? 'text-blue-700' : 'text-gray-600'}`}>
+                          {r === 'enterprise' ? 'Doanh nghiệp' : r === 'collector' ? 'Người thu gom' : 'Người dân'}
+                        </span>
                       </span>
                       <input type="radio" className="hidden" name="role" value={r} checked={editRoleModal.role === r} onChange={() => setEditRoleModal({...editRoleModal, role: r})} />
                     </label>

@@ -17,7 +17,6 @@ export const EnterpriseManagement: React.FC = () => {
   const [total, setTotal] = useState(0);
   const pageSize = 10;
 
-  // Modal states
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; enterpriseId: string | null }>({ isOpen: false, enterpriseId: null });
   const [detailData, setDetailData] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -28,7 +27,19 @@ export const EnterpriseManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Fetch enterprises
+  // Bộ chuyển ngữ thông minh chống sập màn hình
+  const getEffectiveStatus = (row: any) => {
+    if (!row) return 'Pending';
+    if (row.status) {
+      const s = String(row.status).toLowerCase();
+      if (s === 'verified') return 'Verified';
+      if (s === 'rejected') return 'Rejected';
+      return 'Pending';
+    }
+    if (row.isVerified === true) return 'Verified';
+    return 'Pending';
+  };
+
   const fetchEnterprises = useCallback(async (silentLoad = false) => {
     if (!silentLoad) setIsLoading(true);
     setError(null);
@@ -41,9 +52,10 @@ export const EnterpriseManagement: React.FC = () => {
         searchTerm || undefined
       );
       
-      setEnterprises(result.data);
-      setTotal(result.pagination.total);
-      setTotalPages(result.pagination.totalPages);
+      const data = result.data !== undefined ? result.data : result;
+      setEnterprises(Array.isArray(data) ? data : []);
+      setTotal(result.pagination?.total || data.length || 0);
+      setTotalPages(result.pagination?.totalPages || 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch enterprises');
     } finally {
@@ -58,14 +70,13 @@ export const EnterpriseManagement: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [fetchEnterprises, page, statusFilter, searchTerm]);
 
-  // Fetch enterprise detail
   useEffect(() => {
     if (detailModal.isOpen && detailModal.enterpriseId) {
       const fetchDetail = async () => {
         setLoadingDetail(true);
         try {
           const result = await enterpriseAdminApi.getEnterpriseDetail(detailModal.enterpriseId!);
-          setDetailData(result.data);
+          setDetailData(result.data !== undefined ? result.data : result);
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to fetch enterprise detail');
         } finally {
@@ -76,7 +87,6 @@ export const EnterpriseManagement: React.FC = () => {
     }
   }, [detailModal]);
 
-  // Approve enterprise
   const handleApprove = async () => {
     if (!approveModal.enterpriseId) return;
     setIsSubmitting(true);
@@ -94,7 +104,6 @@ export const EnterpriseManagement: React.FC = () => {
     }
   };
 
-  // Reject enterprise
   const handleReject = async () => {
     if (!rejectModal.enterpriseId || !rejectModal.reason.trim()) {
       setError('Vui lòng nhập lý do từ chối');
@@ -129,7 +138,7 @@ export const EnterpriseManagement: React.FC = () => {
       case 'Verified': return 'Đã duyệt';
       case 'Rejected': return 'Bị từ chối';
       case 'Pending': return 'Chờ duyệt';
-      default: return status;
+      default: return status || 'Không rõ';
     }
   };
 
@@ -139,18 +148,21 @@ export const EnterpriseManagement: React.FC = () => {
       label: 'Tên Công Ty', 
       width: '25%',
       render: (name: string) => (
-        <div className="font-bold text-gray-900 text-sm">{name}</div>
+        <div className="font-bold text-gray-900 text-sm">{name || 'Chưa cập nhật'}</div>
       )
     },
     { 
       key: 'status' as const, 
       label: 'Trạng Thái',
       width: '15%',
-      render: (status: string) => (
-        <Badge variant={getStatusBadgeVariant(status)} className="shadow-sm font-bold text-[10px] px-2 py-0.5">
-          {getStatusLabel(status)}
-        </Badge>
-      )
+      render: (_: any, row: any) => {
+        const status = getEffectiveStatus(row);
+        return (
+          <Badge variant={getStatusBadgeVariant(status)} className="shadow-sm font-bold text-[10px] px-2 py-0.5">
+            {getStatusLabel(status)}
+          </Badge>
+        );
+      }
     },
     { 
       key: 'serviceArea' as const, 
@@ -181,44 +193,47 @@ export const EnterpriseManagement: React.FC = () => {
       key: 'createdAt' as const, 
       label: 'Ngày Tạo', 
       width: '15%', 
-      render: (date: string) => <span className="text-gray-500 font-medium text-sm">{new Date(date).toLocaleDateString('vi-VN')}</span>
+      render: (date: string) => <span className="text-gray-500 font-medium text-sm">{date ? new Date(date).toLocaleDateString('vi-VN') : '-'}</span>
     },
     {
       key: 'id' as const,
       label: 'Hành Động',
       width: '25%',
-      render: (_: any, row: EnterpriseListItem) => (
-        <div className="flex gap-2 items-center">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setDetailModal({ isOpen: true, enterpriseId: row.id })}
-            className="gap-1 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all shadow-sm text-xs font-bold"
-          >
-            <Eye size={14} /> Chi tiết
-          </Button>
-          {row.status === 'Pending' && (
-            <>
-              <Button
-                size="sm"
-                variant="success"
-                onClick={() => setApproveModal({ isOpen: true, enterpriseId: row.id, isReapproval: false })}
-                className="shadow-sm p-1.5"
-              >
-                <CheckCircle2 size={16} />
-              </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                onClick={() => setRejectModal({ isOpen: true, enterpriseId: row.id, reason: '' })}
-                className="shadow-sm p-1.5"
-              >
-                <XCircle size={16} />
-              </Button>
-            </>
-          )}
-        </div>
-      )
+      render: (_: any, row: any) => {
+        const status = getEffectiveStatus(row);
+        return (
+          <div className="flex gap-2 items-center">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDetailModal({ isOpen: true, enterpriseId: row.id })}
+              className="gap-1 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all shadow-sm text-xs font-bold"
+            >
+              <Eye size={14} /> Chi tiết
+            </Button>
+            {status === 'Pending' && (
+              <>
+                <Button
+                  size="sm"
+                  variant="success"
+                  onClick={() => setApproveModal({ isOpen: true, enterpriseId: row.id, isReapproval: false })}
+                  className="shadow-sm p-1.5"
+                >
+                  <CheckCircle2 size={16} />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => setRejectModal({ isOpen: true, enterpriseId: row.id, reason: '' })}
+                  className="shadow-sm p-1.5"
+                >
+                  <XCircle size={16} />
+                </Button>
+              </>
+            )}
+          </div>
+        );
+      }
     },
   ];
 
@@ -368,14 +383,14 @@ export const EnterpriseManagement: React.FC = () => {
                     <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-xl flex items-start justify-between">
                       <div>
                         <p className="text-[10px] font-extrabold tracking-widest text-emerald-800 uppercase mb-1">Tên tổ chức / Công ty</p>
-                        <p className="text-xl font-bold text-gray-900 leading-tight">{detailData.companyName}</p>
+                        <p className="text-xl font-bold text-gray-900 leading-tight">{detailData.companyName || 'Chưa cập nhật'}</p>
                         <div className="flex flex-wrap gap-4 mt-4 text-xs font-bold text-gray-600">
                           <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-md shadow-sm border border-gray-100"><Mail size={14} className="text-emerald-500"/> {detailData.userEmail || 'Chưa cập nhật'}</span>
                           <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-md shadow-sm border border-gray-100"><User size={14} className="text-emerald-500"/> {detailData.userFullName || 'Chưa cập nhật'}</span>
                         </div>
                       </div>
-                      <Badge variant={getStatusBadgeVariant(detailData.status)} className="px-3 py-1 font-extrabold text-[10px] shadow-sm">
-                        {getStatusLabel(detailData.status).toUpperCase()}
+                      <Badge variant={getStatusBadgeVariant(getEffectiveStatus(detailData))} className="px-3 py-1 font-extrabold text-[10px] shadow-sm">
+                        {getStatusLabel(getEffectiveStatus(detailData)).toUpperCase()}
                       </Badge>
                     </div>
 
@@ -388,20 +403,20 @@ export const EnterpriseManagement: React.FC = () => {
                       </div>
 
                       <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm">
-                        <label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-2 block text-gray-400">Năng lực xử lý</label>
+                        <label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-2 block">Năng lực xử lý</label>
                         <p className="font-extrabold text-emerald-700 text-sm">
-                          {detailData.capacityKgPerDay ? `${detailData.capacityKgPerDay.toLocaleString()} kg/ngày` : 'N/A'}
+                          {detailData.capacityKgPerDay ? `${detailData.capacityKgPerDay.toLocaleString()} kg/ngày` : 'Chưa xác định'}
                         </p>
                       </div>
 
                       <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm">
-                        <label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-2 block text-gray-400">Nhân sự hiện tại</label>
-                        <p className="font-bold text-gray-900 text-sm">{detailData.collectorCount} <span className="text-[10px] text-gray-500">thành viên</span></p>
+                        <label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-2 block">Nhân sự hiện tại</label>
+                        <p className="font-bold text-gray-900 text-sm">{detailData.collectorCount || 0} <span className="text-[10px] text-gray-500">thành viên</span></p>
                       </div>
 
                       <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm">
-                        <label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-2 block text-gray-400">Loại rác thu gom</label>
-                        <p className="font-bold text-gray-900 text-sm">{detailData.wasteTypeCount} <span className="text-[10px] text-gray-500">nhóm rác</span></p>
+                        <label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-2 block">Loại rác thu gom</label>
+                        <p className="font-bold text-gray-900 text-sm">{detailData.wasteTypeCount || 0} <span className="text-[10px] text-gray-500">nhóm rác</span></p>
                       </div>
                     </div>
 
@@ -425,7 +440,7 @@ export const EnterpriseManagement: React.FC = () => {
                 >
                   ĐÓNG
                 </Button>
-                {detailData?.status === 'Pending' && (
+                {getEffectiveStatus(detailData) === 'Pending' && (
                   <>
                     <Button
                       variant="danger"
@@ -443,7 +458,7 @@ export const EnterpriseManagement: React.FC = () => {
                     </Button>
                   </>
                 )}
-                {detailData?.status === 'Verified' && (
+                {getEffectiveStatus(detailData) === 'Verified' && (
                   <Button
                     variant="danger"
                     className="px-6 rounded-xl font-bold text-xs shadow-sm"
@@ -452,7 +467,7 @@ export const EnterpriseManagement: React.FC = () => {
                     HUỶ DUYỆT
                   </Button>
                 )}
-                {detailData?.status === 'Rejected' && (
+                {getEffectiveStatus(detailData) === 'Rejected' && (
                   <Button
                     variant="success"
                     className="px-8 rounded-xl bg-emerald-600 font-extrabold text-xs shadow-md"
