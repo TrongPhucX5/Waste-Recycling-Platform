@@ -30,11 +30,12 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
   useEffect(() => {
     categoryApi.getAllCategories()
       .then(res => {
-        setCategories(res.data);
+        setCategories(res.data || []);
         setIsLoadingCat(false);
       })
       .catch(err => {
         console.error("Failed to load categories", err);
+        setCategories([]);
         setIsLoadingCat(false);
       });
   }, []);
@@ -285,7 +286,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {categories.map((category) => {
+                {categories && categories.length > 0 ? categories.map((category) => {
                   const isSelected = selectedCategoryId === category.id;
                   return (
                     <label key={category.id} className="relative cursor-pointer group">
@@ -317,7 +318,9 @@ export const ReportForm: React.FC<ReportFormProps> = ({ onSubmit }) => {
                       </div>
                     </label>
                   );
-                })}
+                }) : (
+                  <div className="col-span-2 text-gray-500">Chưa có danh mục nào.</div>
+                )}
               </div>
             )}
           </div>

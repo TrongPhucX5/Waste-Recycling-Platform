@@ -137,7 +137,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId, 
                   {report.imageUrls && report.imageUrls.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {report.imageUrls.map((fileName: string, index: number) => {
-                        const fileUrl = `${API_CONFIG.SERVER_URL}/uploads/${fileName}`;
+                        const fileUrl = fileName.startsWith("http") ? fileName : (fileName.startsWith("/") ? `${API_CONFIG.SERVER_URL}${fileName}` : `${API_CONFIG.SERVER_URL}/uploads/${fileName}`);
                         
                         return (
                           <div 
