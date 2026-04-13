@@ -6,45 +6,45 @@
 
 DELIMITER //
 
-CREATE TRIGGER trg_validate_report_status
-BEFORE UPDATE ON `waste_reports`
-FOR EACH ROW
-BEGIN
-    IF OLD.status <> NEW.status THEN
-        IF OLD.status = 'pending'    AND NEW.status NOT IN ('accepted','rejected') THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'report: pending → accepted|rejected only';
-        END IF;
-        IF OLD.status = 'accepted'   AND NEW.status <> 'assigned'   THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'report: accepted → assigned only';
-        END IF;
-        IF OLD.status = 'assigned'   AND NEW.status <> 'on_the_way' THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'report: assigned → on_the_way only';
-        END IF;
-        IF OLD.status = 'on_the_way' AND NEW.status <> 'collected'  THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'report: on_the_way → collected only';
-        END IF;
-        IF OLD.status IN ('collected','rejected') THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'report: terminal status cannot change';
-        END IF;
-    END IF;
-END //
+-- CREATE TRIGGER trg_validate_report_status
+-- BEFORE UPDATE ON `waste_reports`
+-- FOR EACH ROW
+-- BEGIN
+--     IF OLD.status <> NEW.status THEN
+--         IF OLD.status = 'pending'    AND NEW.status NOT IN ('accepted','rejected') THEN
+--             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'report: pending → accepted|rejected only';
+--         END IF;
+--         IF OLD.status = 'accepted'   AND NEW.status <> 'assigned'   THEN
+--             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'report: accepted → assigned only';
+--         END IF;
+--         IF OLD.status = 'assigned'   AND NEW.status <> 'on_the_way' THEN
+--             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'report: assigned → on_the_way only';
+--         END IF;
+--         IF OLD.status = 'on_the_way' AND NEW.status <> 'collected'  THEN
+--             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'report: on_the_way → collected only';
+--         END IF;
+--         IF OLD.status IN ('collected','rejected') THEN
+--             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'report: terminal status cannot change';
+--         END IF;
+--     END IF;
+-- END //
 
-CREATE TRIGGER trg_validate_task_status
-BEFORE UPDATE ON `collection_tasks`
-FOR EACH ROW
-BEGIN
-    IF OLD.status <> NEW.status THEN
-        IF OLD.status = 'assigned'   AND NEW.status <> 'on_the_way' THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'task: assigned → on_the_way only';
-        END IF;
-        IF OLD.status = 'on_the_way' AND NEW.status <> 'collected'  THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'task: on_the_way → collected only';
-        END IF;
-        IF OLD.status = 'collected' THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'task: collected is terminal';
-        END IF;
-    END IF;
-END //
+-- CREATE TRIGGER trg_validate_task_status
+-- BEFORE UPDATE ON `collection_tasks`
+-- FOR EACH ROW
+-- BEGIN
+--     IF OLD.status <> NEW.status THEN
+--         IF OLD.status = 'assigned'   AND NEW.status <> 'on_the_way' THEN
+--             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'task: assigned → on_the_way only';
+--         END IF;
+--         IF OLD.status = 'on_the_way' AND NEW.status <> 'collected'  THEN
+--             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'task: on_the_way → collected only';
+--         END IF;
+--         IF OLD.status = 'collected' THEN
+--             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'task: collected is terminal';
+--         END IF;
+--     END IF;
+-- END //
 
 DELIMITER ;
 
