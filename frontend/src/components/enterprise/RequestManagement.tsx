@@ -36,7 +36,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
     setError(null);
     try {
       const response = await reportApi.acceptReport(reportId);
-      onStatusChange(reportId, "APPROVED");
+      onStatusChange(reportId, "Accepted");
       alert(response.message);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to accept report";
@@ -52,7 +52,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
     setError(null);
     try {
       const response = await reportApi.rejectReport(reportId);
-      onStatusChange(reportId, "REJECTED");
+      onStatusChange(reportId, "Rejected");
       alert(response.message);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to reject report";
@@ -94,7 +94,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
                label: "Status", 
                key: "status",
                render: (val: string) => (
-                 <Badge variant={val === "APPROVED" ? "success" : val === "PENDING" ? "warning" : "default"}>
+                 <Badge variant={val === "Accepted" ? "success" : val === "Pending" ? "warning" : "default"}>
                    {val}
                  </Badge>
                )
@@ -104,7 +104,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
                key: "id",
                render: (_: any, row: any) => (
                  <div className="flex gap-2">
-                   {row.status?.toString().toUpperCase() === "PENDING" && (
+                   {row.status === "Pending" && (
                      <>
                        <Button 
                          size="sm" 
@@ -124,7 +124,7 @@ export const RequestManagement: React.FC<RequestManagementProps> = ({ requests, 
                        </Button>
                      </>
                    )}
-                   {row.status?.toString().toUpperCase() === "ACCEPTED" && (
+                   {row.status === "Accepted" && (
                       <Button 
                         size="sm" 
                         variant="secondary"

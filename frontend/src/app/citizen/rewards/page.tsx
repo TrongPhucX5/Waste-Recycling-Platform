@@ -1,9 +1,10 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Award, Gift, Ticket, Heart, Search, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Award, Gift, Ticket, Heart, Search, ShoppingBag, Loader2 } from "lucide-react";
+import { citizenRewardApi, CitizenRewardData } from "@/lib/api/citizenRewardApi";
 
-// Dữ liệu quà tặng giả định
+// Mock rewards data (will be replaced with API when available)
 const mockRewards = [
   { id: 1, title: "Voucher Highlands Coffee 50K", points: 500, category: "voucher", image: "☕", color: "bg-orange-100 text-orange-600" },
   { id: 2, title: "Túi rác sinh học phân hủy hoàn toàn (Cuộn)", points: 250, category: "physical", image: "♻️", color: "bg-emerald-100 text-emerald-600" },
@@ -15,7 +16,28 @@ const mockRewards = [
 
 export default function RewardsStorePage() {
   const [filter, setFilter] = useState("all");
-  const userPoints = 1240; // Điểm giả định của user
+  const [rewardData, setRewardData] = useState<CitizenRewardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadRewardData();
+  }, []);
+
+  const loadRewardData = async () => {
+    try {
+      setLoading(true);
+      const data = await citizenRewardApi.getRewards();
+      setRewardData(data);
+    } catch (err) {
+      setError("Không thể tải dữ liệu điểm thưởng");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const userPoints = rewardData?.totalPoints || 0;
 
   const filteredRewards = filter === "all" 
     ? mockRewards 

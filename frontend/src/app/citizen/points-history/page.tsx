@@ -1,24 +1,38 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, History, TrendingUp, TrendingDown, Calendar, Filter } from "lucide-react";
-
-// Dữ liệu lịch sử giả định
-const mockHistory = [
-  { id: 1, date: "01/03/2026, 14:30", type: "earn", reason: "Phân loại Nhựa đúng quy định", points: 50, status: "Thành công" },
-  { id: 2, date: "28/02/2026, 09:15", type: "spend", reason: "Đổi Voucher Highlands Coffee 50K", points: 500, status: "Thành công" },
-  { id: 3, date: "25/02/2026, 16:45", type: "earn", reason: "Báo cáo thu gom lớn (>15kg)", points: 100, status: "Thành công" },
-  { id: 4, date: "20/02/2026, 10:00", type: "earn", reason: "Duy trì hoạt động 4 tuần liên tiếp", points: 200, status: "Thành công" },
-  { id: 5, date: "15/02/2026, 08:30", type: "spend", reason: "Quyên góp Quỹ Trồng Rừng", points: 300, status: "Thành công" },
-  { id: 6, date: "10/02/2026, 11:20", type: "earn", reason: "Mời bạn bè tham gia CWCRP", points: 150, status: "Thành công" },
-];
+import { ArrowLeft, History, TrendingUp, TrendingDown, Calendar, Filter, Loader2 } from "lucide-react";
+import { citizenRewardApi, RewardHistoryItem } from "@/lib/api/citizenRewardApi";
 
 export default function PointsHistoryPage() {
   const [filter, setFilter] = useState("all");
+  const [history, setHistory] = useState<RewardHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const loadHistory = async () => {
+    try {
+      setLoading(true);
+      const data = await citizenRewardApi.getRewardHistory(1, 50);
+      setHistory(data.items);
+    } catch (err) {
+      setError("Không thể tải lịch sử điểm thưởng");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredHistory = filter === "all" 
-    ? mockHistory 
-    : mockHistory.filter(h => h.type === filter);
+    ? history 
+    : history.filter(h => {
+        const isEarn = h.points > 0;
+        return filter === "earn" ? isEarn : !isEarn;
+      });
 
   return (
     <div className="min-h-screen bg-gray-50/50 py-8">
@@ -78,30 +92,45 @@ export default function PointsHistoryPage() {
                   <tr key={item.id} className="hover:bg-gray-50/50 transition-colors group">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${item.type === "earn" ? "bg-emerald-100 text-emerald-600" : "bg-orange-100 text-orange-600"}`}>
-                          {item.type === "earn" ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                        <div className={`p-2 rounded-lg ${item.points > 0 ? "bg-emerald-100 text-emerald-600" : "bg-orange-100 text-orange-600"}`}>
+                          {item.points > 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
                         </div>
                         <span className="font-semibold text-gray-800">{item.reason}</span>
                       </div>
                     </td>
                     <td className="p-4 text-sm text-gray-500 flex items-center gap-2">
-                      <Calendar size={14} className="text-gray-400" /> {item.date}
+                      <Calendar size={14} className="text-gray-400" /> {new Date(item.createdAt).toLocaleString('vi-VN')}
                     </td>
                     <td className="p-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                        {item.status}
+                        Thành công
                       </span>
                     </td>
-                    <td className={`p-4 font-bold text-right ${item.type === "earn" ? "text-emerald-600" : "text-orange-600"}`}>
-                      {item.type === "earn" ? "+" : "-"}{item.points} pts
+                    <td className={`p-4 font-bold text-right ${item.points > 0 ? "text-emerald-600" : "text-orange-600"}`}>
+                      {item.points > 0 ? "+" : ""}{item.points} pts
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             
+            {/* Loading state */}
+            {loading && (
+              <div className="p-8 text-center text-gray-500">
+                <Loader2 className="animate-spin mx-auto mb-2" size={24} />
+                Đang tải...
+              </div>
+            )}
+            
+            {/* Error state */}
+            {error && !loading && (
+              <div className="p-8 text-center text-red-500">
+                {error}
+              </div>
+            )}
+            
             {/* Trạng thái trống nếu filter không có dữ liệu */}
-            {filteredHistory.length === 0 && (
+            {!loading && !error && filteredHistory.length === 0 && (
               <div className="p-8 text-center text-gray-500">
                 Không tìm thấy giao dịch nào.
               </div>
