@@ -59,12 +59,18 @@ public class ComplaintRepository : IComplaintRepository
         return (complaints, total);
     }
 
-    public async Task<(IEnumerable<Complaint> Complaints, int Total)> GetByCitizenIdAsync(Guid citizenId, int page, int pageSize, CancellationToken cancellationToken = default)
+    public async Task<(IEnumerable<Complaint> Complaints, int Total)> GetByCitizenIdAsync(Guid citizenId, int page, int pageSize, ComplaintStatus? status, CancellationToken cancellationToken = default)
     {
         var query = _context.Complaints
             .Where(c => c.CitizenId == citizenId)
             .Include(c => c.Citizen)
-            .Include(c => c.WasteReport);
+            .Include(c => c.WasteReport)
+            .AsQueryable();
+
+        if (status.HasValue)
+        {
+            query = query.Where(c => c.Status == status.Value);
+        }
 
         var total = await query.CountAsync(cancellationToken);
 

@@ -10,7 +10,6 @@ import {
   User, 
   Mail, 
   Phone, 
-  MapPin, 
   Trophy, 
   Leaf, 
   Recycle,
@@ -481,29 +480,26 @@ export default function ProfilePage() {
                   <ChevronRight size={16} className="text-gray-400" />
                 </button>
 
-                <button className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left">
-                  <MapPin size={20} className="text-gray-400" />
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">Địa chỉ của tôi</p>
-                    <p className="text-xs text-gray-500">Quản lý địa điểm thu gom</p>
-                  </div>
-                  <ChevronRight size={16} className="text-gray-400" />
-                </button>
-
-                <button className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left">
+                <button 
+                  disabled
+                  className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left opacity-50 cursor-not-allowed"
+                >
                   <Bell size={20} className="text-gray-400" />
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">Cài đặt thông báo</p>
-                    <p className="text-xs text-gray-500">Bật/tắt thông báo</p>
+                    <p className="text-xs text-gray-500">Sắp ra mắt</p>
                   </div>
-                  <ChevronRight size={16} className="text-gray-400" />
+                  <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Coming soon</span>
                 </button>
 
-                <button className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left">
+                <button 
+                  onClick={() => navigateTo('/citizen/complaints')}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                >
                   <MessageSquare size={20} className="text-gray-400" />
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">Hỗ trợ & Khiếu nại</p>
-                    <p className="text-xs text-gray-500">Gửi phản hồi, khiếu nại</p>
+                    <p className="text-xs text-gray-500">Xem khiếu nại đã gửi</p>
                   </div>
                   <ChevronRight size={16} className="text-gray-400" />
                 </button>

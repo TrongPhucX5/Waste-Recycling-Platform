@@ -27,7 +27,8 @@ public class GetCitizenComplaintsQueryHandler : IRequestHandler<GetCitizenCompla
         var (complaints, total) = await _complaintRepository.GetByCitizenIdAsync(
             request.CitizenId, 
             request.Page, 
-            request.PageSize, 
+            request.PageSize,
+            request.Status,
             cancellationToken);
 
         var items = complaints.Select(c => new ComplaintListDto

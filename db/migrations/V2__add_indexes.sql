@@ -26,8 +26,10 @@ CREATE INDEX idx_status_logs_task   ON `task_status_logs`(`task_id`);
 CREATE INDEX idx_rewards_citizen    ON `reward_points`(`citizen_id`, `created_at` DESC);
 
 -- complaints
-CREATE INDEX idx_complaints_citizen ON `complaints`(`citizen_id`);
-CREATE INDEX idx_complaints_status  ON `complaints`(`status`);
+CREATE INDEX idx_complaints_citizen   ON `complaints`(`citizen_id`);
+CREATE INDEX idx_complaints_collector ON `complaints`(`collector_id`);
+CREATE INDEX idx_complaints_enterprise ON `complaints`(`enterprise_id`);
+CREATE INDEX idx_complaints_status    ON `complaints`(`status`);
 
 -- audit_logs
 CREATE INDEX idx_audit_user         ON `audit_logs`(`user_id`, `created_at` DESC);
