@@ -273,9 +273,39 @@ public class CollectorTaskController : ControllerBase
             // Bây giờ mới Collect
             task.WasteReport.Collect();
 
+            // Thực hiện cộng điểm thưởng cho thu gom (Reward System)
+            if (task.WasteReport.WasteCategoryId.HasValue)
+            {
+                var rule = await _context.RewardRules
+                    .FirstOrDefaultAsync(r => r.EnterpriseId == task.EnterpriseId 
+                                           && r.WasteCategoryId == task.WasteReport.WasteCategoryId.Value 
+                                           && r.IsActive);
+                
+                if (rule != null)
+                {
+                    int earnedPoints = rule.PointsPerReport + rule.BonusQuality;
+
+                    var reward = new RewardPoints
+                    {
+                        Id = Guid.NewGuid(),
+                        CitizenId = task.WasteReport.CitizenId,
+                        ReportId = task.ReportId,
+                        Points = earnedPoints,
+                        Reason = $"Reward for collected waste report {task.ReportId}",
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.RewardPoints.Add(reward);
+
+                    // Thông báo cho Citizen qua SignalR nếu họ đang online
+                    await _hubContext.Clients.User(task.WasteReport.CitizenId.ToString())
+                        .SendAsync("RewardReceived", reward.Points, reward.Reason);
+                }
+            }
+
             await _context.SaveChangesAsync();
             
-            // Phát sóng sự kiện SignalR
+            // Phát sóng sự kiện SignalR cho task status
             await _hubContext.Clients.All.SendAsync("TaskStatusUpdated", id, CollectionTaskStatus.Collected.ToString());
 
             return Ok(new { message = "Task completed successfully.", taskId = id });

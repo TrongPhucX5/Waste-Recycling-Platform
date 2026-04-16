@@ -1,10 +1,10 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { collectorTaskApi } from "@/lib/api/collectorTaskApi";
 import { API_CONFIG } from "@/lib/api/config";
 import { Button, Input, Badge } from "@/components/ui";
-import { MapPin, User, ArrowLeft, Image as ImageIcon, CheckCircle, Clock } from "lucide-react";
+import { MapPin, User, ArrowLeft, Image as ImageIcon, CheckCircle, Clock, UploadCloud, X } from "lucide-react";
 
 export default function TaskDetailPage() {
   const params = useParams();
@@ -12,8 +12,10 @@ export default function TaskDetailPage() {
   const [task, setTask] = useState<any>(null);
   const [weightKg, setWeightKg] = useState("");
   const [notes, setNotes] = useState("");
-  const [image, setImage] = useState<File | null>(null);
+  const [images, setImages] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (params.id) {
@@ -37,19 +39,53 @@ export default function TaskDetailPage() {
 
   const handleComplete = async () => {
     if (!weightKg) return alert("Vui lòng nhập khối lượng (kg)");
-    if (!image) return alert("Vui lòng tải lên hình ảnh xác minh");
+    if (images.length === 0) return alert("Vui lòng tải lên ít nhất một hình ảnh xác minh");
     
     try {
       const formData = new FormData();
       formData.append("WeightKg", weightKg);
       formData.append("Notes", notes);
-      formData.append("Images", image);
+      images.forEach(img => formData.append("Images", img));
 
       await collectorTaskApi.completeTask(task.id, formData);
       window.location.reload();
     } catch (err: any) {
       alert(`Không thể hoàn thành nhiệm vụ: ${err.message || JSON.stringify(err.data)}`);
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const newFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      setImages(prev => [...prev, ...newFiles]);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+      setImages(prev => [...prev, ...newFiles]);
+    }
+    // Cần reset giá trị input nếu muốn upload tiếp một luồng file cũ
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -66,8 +102,11 @@ export default function TaskDetailPage() {
               <h1 className="text-2xl font-bold text-gray-900">{task.report.categoryName || "Rác thải không xác định"}</h1>
               <p className="text-gray-500 mt-1 text-sm">Mã nhiệm vụ: {task.id}</p>
             </div>
-            <Badge variant={task.status === "Collected" ? "success" : task.status === "OnTheWay" ? "info" : "warning"}>
-              {task.status.replace(/_/g, " ")}
+            <Badge variant={task.status === "Collected" || task.status?.toLowerCase() === "collected" ? "success" : task.status === "OnTheWay" ? "info" : "warning"}>
+              {task.status === "Collected" || task.status?.toLowerCase() === "collected" ? "Đã thu gom" : 
+               task.status === "OnTheWay" || task.status?.toLowerCase() === "ontheway" ? "Đang di chuyển" : 
+               task.status === "Assigned" || task.status?.toLowerCase() === "assigned" ? "Đã phân công" : 
+               task.status ? task.status.replace(/_/g, " ") : ""}
             </Badge>
           </div>
 
@@ -191,17 +230,61 @@ export default function TaskDetailPage() {
               <p className="text-sm text-gray-500">Vui lòng nhập khối lượng và hình ảnh xác minh để hoàn thành nhiệm vụ.</p>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Khối lượng (kg) *</label>
-                <Input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)} required />
+                <Input type="number" min="0" step="0.1" value={weightKg} onChange={e => setWeightKg(e.target.value)} required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh xác minh *</label>
-                <input type="file" onChange={e => setImage(e.target.files?.[0] || null)} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Hình ảnh xác minh * ({images.length} ảnh)</label>
+                
+                {/* Khu vực kéo thả */}
+                <div 
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
+                    isDragging ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  <input 
+                    type="file" 
+                    multiple 
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect} 
+                    className="hidden" 
+                  />
+                  <UploadCloud className={`w-10 h-10 mb-3 ${isDragging ? 'text-emerald-500' : 'text-gray-400'}`} />
+                  <p className="text-sm font-medium text-gray-700">Kéo thả ảnh vào đây để tải lên</p>
+                  <p className="text-xs text-gray-500 mt-1">hoặc nhấn để chọn file (.jpg, .png, .gif) - Hỗ trợ tải nhiều ảnh</p>
+                </div>
+
+                {/* Danh sách ảnh đã chọn */}
+                {images.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+                    {images.map((img, idx) => (
+                      <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-gray-200">
+                        <img 
+                          src={URL.createObjectURL(img)} 
+                          alt={`preview-${idx}`} 
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú thêm</label>
                 <Input value={notes} onChange={e => setNotes(e.target.value)} />
               </div>
-              <Button onClick={handleComplete} className="w-full" disabled={!weightKg || !image}>
+              <Button onClick={handleComplete} className="w-full" disabled={!weightKg || images.length === 0}>
                 Hoàn thành thu gom (Đã thu gom)
               </Button>
             </div>
