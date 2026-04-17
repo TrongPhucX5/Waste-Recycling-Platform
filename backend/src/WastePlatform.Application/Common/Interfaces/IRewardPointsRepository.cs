@@ -12,4 +12,14 @@ public interface IRewardPointsRepository
     // Thêm hàm này cho WRP-122
     Task<(IEnumerable<AreaLeaderboardDto> Areas, int Total)> GetAreaLeaderboardAsync(int page, int pageSize, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+    
+    // Hàm để tạo reward points khi collector hoàn thành task
+    Task<RewardPoints> CreateRewardPointsAsync(
+        Guid citizenId,
+        Guid reportId,
+        Guid taskId,
+        Guid enterpriseId,
+        int wasteCategoryId,
+        string? reason = null,
+        CancellationToken cancellationToken = default);
 }

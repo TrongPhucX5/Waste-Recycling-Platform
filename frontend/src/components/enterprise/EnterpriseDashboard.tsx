@@ -55,6 +55,8 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
     companyName: "",
     serviceArea: "",
     capacityKgPerDay: null,
+    status: "Pending", // BƯỚC 1: Thêm Status
+    rejectionReason: undefined, // BƯỚC 1: Thêm Rejection Reason
   });
   const [categories, setCategories] = useState<EnterpriseWasteCategory[]>([]);
   const [acceptedWasteTypeIds, setAcceptedWasteTypeIds] = useState<number[]>([]);
@@ -100,34 +102,50 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
       setProfileLoading(true);
       setProfileError(null);
       try {
-        const [profileResponse, wasteTypesResponse, rewardRulesResponse, statsResponse, collectorsResponse] = await Promise.all([
-          enterpriseTaskApi.getProfile(),
-          enterpriseTaskApi.getWasteTypes(),
-          enterpriseRewardApi.getRewardRules(),
-          enterpriseTaskApi.getStats(),
-          enterpriseTaskApi.getAvailableCollectors(),
-        ]);
+        // BƯỚC 1: LUÔN gọi getProfile() TRƯỚC để lấy trạng thái
+        const profileResponse = await enterpriseTaskApi.getProfile();
 
+        // Lưu profile kèm theo status + rejectionReason
         setEnterpriseProfile({
           id: profileResponse.id,
           companyName: profileResponse.companyName,
           serviceArea: profileResponse.serviceArea ?? "",
           capacityKgPerDay: profileResponse.capacityKgPerDay,
+          status: profileResponse.status ?? "Pending", // Lấy status từ API
+          rejectionReason: profileResponse.rejectionReason, // Lấy rejection reason từ API
         });
-        setCategories(wasteTypesResponse.allCategories);
-        setAcceptedWasteTypeIds(wasteTypesResponse.acceptedIds);
 
+        // BƯỚC 2: LUÔN LUÔN gọi getWasteTypes (để form CapacitySettings hiển thị danh sách)
+        const wasteTypesResponse = await enterpriseTaskApi.getWasteTypes().catch((error) => {
+          console.error("🚨 BẮT ĐƯỢC LỖI GỌI API RÁC:", error);
+          return { allCategories: [], acceptedIds: [] };
+        });
+        
+        console.log("📦 DỮ LIỆU RÁC TRẢ VỀ:", wasteTypesResponse);
+        
+        // 👇 SET DỮ LIỆU CHO FORM CẬP NHẬT CÔNG SUẤT 👇
+        setCategories(wasteTypesResponse.allCategories || []);
+        setAcceptedWasteTypeIds(wasteTypesResponse.acceptedIds || []);
         setCapacity({
-          wasteTypes: wasteTypesResponse.allCategories
-            .filter((category) => wasteTypesResponse.acceptedIds.includes(category.id))
-            .map((category) => category.name),
+          wasteTypes: (wasteTypesResponse.allCategories || [])
+            .filter((category: any) => ((wasteTypesResponse.acceptedIds as any[]) || []).includes(category.id))
+            .map((category: any) => category.name),
           maxCapacity: profileResponse.capacityKgPerDay ?? 0,
           serviceArea: profileResponse.serviceArea ?? "",
         });
 
-        setRewardRules(rewardRulesResponse);
-        setTaskStats(statsResponse);
-        setCollectors(collectorsResponse);
+        // BƯỚC 3: CHỈ KHI ĐÃ VERIFIED mới gọi các API Thống kê, Phần thưởng, Nhân viên
+        if (profileResponse.status === "Verified") {
+          const [rewardRulesResponse, statsResponse, collectorsResponse] = await Promise.all([
+            enterpriseRewardApi.getRewardRules().catch(() => []),
+            enterpriseTaskApi.getStats().catch(() => null),
+            enterpriseTaskApi.getAvailableCollectors().catch(() => []),
+          ]);
+
+          setRewardRules(rewardRulesResponse);
+          setTaskStats(statsResponse);
+          setCollectors(collectorsResponse);
+        }
       } catch (err) {
         setProfileError(err instanceof Error ? err.message : "Failed to load enterprise profile");
         console.error(err);
@@ -340,6 +358,102 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
 
   const activeConfig = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
 
+  // ========== BƯỚC 3: GUARD LOGIC (TRẠM GÁC) ==========
+  
+  // Guard 1: Nếu đang load profile → Hiện loading
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-emerald-600"></div>
+          <p className="text-gray-600 font-medium">Đang tải hồ sơ doanh nghiệp...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard 2: Nếu chưa điền thông tin HOẶC bị từ chối → Buộc hiện form
+  if (!enterpriseProfile.capacityKgPerDay || !enterpriseProfile.serviceArea || enterpriseProfile.status === "Rejected") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+        <div className="max-w-3xl mx-auto">
+          {/* Tiêu đề */}
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Hoàn Thành Hồ Sơ Doanh Nghiệp</h1>
+            <p className="text-gray-600">Để bắt đầu nhận nhiệm vụ thu gom, vui lòng điền đầy đủ thông tin công suất và khu vực phục vụ.</p>
+          </div>
+
+          {/* Warning nếu bị reject */}
+          {enterpriseProfile.status === "Rejected" && enterpriseProfile.rejectionReason && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
+              <h3 className="font-bold text-red-900 mb-2">❌ Hồ Sơ Bị Từ Chối</h3>
+              <p className="text-red-800 text-sm"><strong>Lý do:</strong> {enterpriseProfile.rejectionReason}</p>
+              <p className="text-red-700 text-sm mt-2">Vui lòng cập nhật thông tin và gửi lại để Admin xem xét.</p>
+            </div>
+          )}
+
+          {/* Form nhập thông tin */}
+          <CapacitySettings
+            profile={enterpriseProfile}
+            categories={categories}
+            acceptedIds={acceptedWasteTypeIds}
+            onSave={handleSaveCapacity}
+            saving={profileLoading}
+            error={profileError}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Guard 3: Nếu đã nhập nhưng đang chờ Admin duyệt → Hiện màn hình chờ
+  if (enterpriseProfile.status === "Pending") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="mb-6 flex justify-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 animated-bounce">
+              <svg className="w-8 h-8 text-blue-600 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          </div>
+          
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Chờ Xác Nhận Admin</h2>
+          
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            Hồ sơ doanh nghiệp của bạn đã được gửi đến Admin để xem xét. 
+            <br />
+            <strong>Quá trình phê duyệt thường mất 24-48 giờ.</strong>
+          </p>
+
+          <div className="bg-blue-50 rounded-lg p-4 mb-6 text-left">
+            <p className="text-sm text-blue-900"><strong>📋 Thông tin hồ sơ:</strong></p>
+            <ul className="text-sm text-blue-800 mt-2 space-y-1">
+              <li>• <strong>Công ty:</strong> {enterpriseProfile.companyName}</li>
+              <li>• <strong>Khu vực:</strong> {enterpriseProfile.serviceArea}</li>
+              <li>• <strong>Công suất:</strong> {enterpriseProfile.capacityKgPerDay?.toLocaleString()} kg/ngày</li>
+            </ul>
+          </div>
+
+          <div className="text-center text-sm text-gray-500">
+            <p>Bạn sẽ nhận được thông báo khi Admin xác nhận.</p>
+            <p className="mt-2">Vui lòng kiểm tra email của bạn định kỳ.</p>
+          </div>
+
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
+          >
+            Làm Mới Trang
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== Guard Passed! Hiện Dashboard Bình Thường ==========
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
       <aside className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:sticky lg:top-4 lg:h-fit">

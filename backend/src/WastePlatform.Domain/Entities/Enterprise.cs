@@ -8,6 +8,8 @@ public class Enterprise
     public string? ServiceArea { get; set; } // JSON stored as string
     public int? CapacityKgPerDay { get; set; }
     public bool IsVerified { get; set; } = false;
+    public string Status { get; set; } = "Pending"; // "Pending", "Verified", "Rejected"
+    public string? RejectionReason { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties

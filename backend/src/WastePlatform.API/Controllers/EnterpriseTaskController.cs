@@ -253,6 +253,8 @@ public class EnterpriseTaskController : ControllerBase
             enterprise.CompanyName,
             enterprise.ServiceArea,
             enterprise.CapacityKgPerDay,
+            enterprise.Status,
+            enterprise.RejectionReason,
             AcceptedWasteTypes = acceptedWasteTypes
         });
     }
@@ -273,6 +275,13 @@ public class EnterpriseTaskController : ControllerBase
         enterprise.ServiceArea = string.IsNullOrWhiteSpace(request.ServiceArea) ? null : request.ServiceArea.Trim();
         enterprise.CapacityKgPerDay = request.CapacityKgPerDay;
 
+        // CHỈ đổi trạng thái thành Pending nếu họ đang bị "Từ chối" (để xin duyệt lại).
+        // Còn nếu đã "Verified" (Đã duyệt) thì cho họ sửa thoải mái, không bắt duyệt lại!
+        if (enterprise.Status == "Rejected")
+        {
+            enterprise.Status = "Pending";
+        }
+
         _context.Enterprises.Update(enterprise);
         await _context.SaveChangesAsync();
 
@@ -281,7 +290,9 @@ public class EnterpriseTaskController : ControllerBase
             message = "Enterprise profile updated successfully",
             enterprise.Id,
             enterprise.ServiceArea,
-            enterprise.CapacityKgPerDay
+            enterprise.CapacityKgPerDay,
+            Status = enterprise.Status,
+            enterprise.RejectionReason
         });
     }
 

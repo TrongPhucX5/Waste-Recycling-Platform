@@ -27,8 +27,13 @@ public class RejectEnterpriseCommandHandler : IRequestHandler<RejectEnterpriseCo
             };
         }
 
-        // Mark enterprise as not verified (rejected)
+        // Mark enterprise as not verified (rejected) and set status + rejection reason
         enterprise.IsVerified = false;
+        enterprise.Status = "Rejected";
+        enterprise.RejectionReason = request.ReasonForRejection;
+
+        // Persist changes to database
+        await _enterpriseRepository.UpdateAsync(enterprise, cancellationToken);
 
         return new RejectEnterpriseResult
         {

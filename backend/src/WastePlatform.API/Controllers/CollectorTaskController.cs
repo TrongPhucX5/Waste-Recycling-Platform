@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WastePlatform.Application.Rewards.Commands;
 using WastePlatform.Domain.Entities;
 using WastePlatform.Domain.Enums;
 using WastePlatform.Infrastructure.Persistence;
@@ -17,11 +19,16 @@ public class CollectorTaskController : ControllerBase
 {
     private readonly WastePlatformDbContext _context;
     private readonly IHubContext<TaskHub> _hubContext;
+    private readonly IMediator _mediator;
 
-    public CollectorTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext)
+    public CollectorTaskController(
+        WastePlatformDbContext context,
+        IHubContext<TaskHub> hubContext,
+        IMediator mediator)
     {
         _context = context;
         _hubContext = hubContext;
+        _mediator = mediator;
     }
 
     private async Task<Collector?> GetCurrentCollectorAsync()
@@ -275,10 +282,51 @@ public class CollectorTaskController : ControllerBase
 
             await _context.SaveChangesAsync();
             
+            // Tạo điểm thưởng cho Citizen
+            CreateRewardPointsCommandResult? rewardResult = null;
+            try
+            {
+                var createRewardCommand = new CreateRewardPointsCommand
+                {
+                    CitizenId = task.WasteReport.CitizenId,
+                    TaskId = task.Id,
+                    ReportId = task.ReportId,
+                    EnterpriseId = task.EnterpriseId,
+                    WasteCategoryId = task.WasteReport.WasteCategoryId ?? 0,
+                    Reason = $"Báo cáo và thu gom rác - {task.WasteReport.WasteCategory?.Name ?? "Rác thường"}"
+                };
+                
+                rewardResult = await _mediator.Send(createRewardCommand);
+            }
+            catch (Exception ex)
+            {
+                // Log reward creation error nhưng không fail task completion
+                Console.WriteLine($"Lỗi tạo điểm thưởng: {ex.Message}");
+            }
+            
             // Phát sóng sự kiện SignalR
             await _hubContext.Clients.All.SendAsync("TaskStatusUpdated", id, CollectionTaskStatus.Collected.ToString());
 
-            return Ok(new { message = "Task completed successfully.", taskId = id });
+            object? rewardInfo = null;
+            if (rewardResult != null)
+            {
+                rewardInfo = new
+                {
+                    rewardResult.RewardPointsId,
+                    rewardResult.Points,
+                    rewardResult.Reason,
+                    notificationMessage = $"✅ Báo cáo được xác nhận! +{rewardResult.Points} điểm thưởng"
+                };
+            }
+
+            var response = new
+            {
+                message = "Task completed successfully.",
+                taskId = id,
+                reward = rewardInfo
+            };
+
+            return Ok(response);
         }
         catch (InvalidOperationException ex)
         {

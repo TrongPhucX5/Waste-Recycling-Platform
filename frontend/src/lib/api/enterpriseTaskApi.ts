@@ -57,6 +57,8 @@ export interface EnterpriseProfile {
   companyName: string;
   serviceArea: string | null;
   capacityKgPerDay: number | null;
+  status?: "Pending" | "Verified" | "Rejected"; // Status for approval workflow
+  rejectionReason?: string | null; // Reason if rejected
 }
 
 export interface TaskTimelineEvent {
@@ -119,6 +121,8 @@ export const enterpriseTaskApi = {
       companyName: string;
       serviceArea: string | null;
       capacityKgPerDay: number | null;
+      status?: "Pending" | "Verified" | "Rejected";
+      rejectionReason?: string | null;
       acceptedWasteTypes: Array<{ wasteCategoryId: number; categoryName: string }>;
     }>(`/enterprise/tasks/profile`);
   },

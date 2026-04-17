@@ -37,7 +37,13 @@ public class VerifyEnterpriseCommandHandler : IRequestHandler<VerifyEnterpriseCo
             };
         }
 
+        // Update both old and new status fields
         enterprise.IsVerified = true;
+        enterprise.Status = "Verified";
+        enterprise.RejectionReason = null; // Clear any previous rejection reason
+
+        // Persist changes to database
+        await _enterpriseRepository.UpdateAsync(enterprise, cancellationToken);
 
         return new VerifyEnterpriseResult
         {

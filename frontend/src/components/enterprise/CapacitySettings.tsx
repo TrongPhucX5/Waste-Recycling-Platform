@@ -6,6 +6,8 @@ interface CapacitySettingsProps {
     companyName: string;
     serviceArea: string | null;
     capacityKgPerDay: number | null;
+    status?: "Pending" | "Verified" | "Rejected";
+    rejectionReason?: string | null;
   };
   categories: Array<{ id: number; name: string }>;
   acceptedIds: number[];
@@ -46,7 +48,16 @@ export const CapacitySettings: React.FC<CapacitySettingsProps> = ({ profile, cat
 
   return (
     <Card className="p-6 max-w-3xl">
-      <h2 className="text-xl font-bold mb-6 text-gray-800">Capacity & Service Settings</h2>
+      <h2 className="text-xl font-bold mb-6 text-gray-800">
+        {profile.status === "Rejected" ? "✏️ Cập Nhật Hồ Sơ Mới" : "Capacity & Service Settings"}
+      </h2>
+
+      {profile.status === "Rejected" && profile.rejectionReason && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded">
+          <p className="font-semibold text-yellow-900 mb-1">⚠️ Lý do từ chối</p>
+          <p className="text-sm text-yellow-800">{profile.rejectionReason}</p>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">

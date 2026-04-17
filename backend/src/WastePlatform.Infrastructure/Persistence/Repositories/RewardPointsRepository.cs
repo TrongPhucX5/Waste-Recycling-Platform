@@ -122,4 +122,71 @@ public class RewardPointsRepository : IRewardPointsRepository
     {
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<RewardPoints> CreateRewardPointsAsync(
+        Guid citizenId,
+        Guid reportId,
+        Guid taskId,
+        Guid enterpriseId,
+        int wasteCategoryId,
+        string? reason = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Tìm quy tắc thưởng cho enterprise và loại rác
+            var rewardRule = await _context.RewardRules
+                .FirstOrDefaultAsync(
+                    r => r.EnterpriseId == enterpriseId &&
+                         r.WasteCategoryId == wasteCategoryId &&
+                         r.IsActive,
+                    cancellationToken);
+
+            // Nếu không có quy tắc riêng, sử dụng điểm mặc định
+            var points = rewardRule?.PointsPerReport ?? 10;
+            
+            // Thêm điểm bonus nếu có
+            if (rewardRule?.BonusQuality > 0)
+            {
+                points += rewardRule.BonusQuality;
+            }
+
+            // Tạo idempotency key để tránh trùng lặp
+            var idempotencyKey = $"task_{taskId}_{reportId}";
+
+            // Kiểm tra xem đã có reward cho task này rồi không
+            var existingReward = await _context.RewardPoints
+                .FirstOrDefaultAsync(
+                    rp => rp.IdempotencyKey == idempotencyKey,
+                    cancellationToken);
+
+            if (existingReward != null)
+            {
+                // Đã tạo rồi, trả về kết quả
+                return existingReward;
+            }
+
+            // Tạo bản ghi reward points mới
+            var rewardPoints = new RewardPoints
+            {
+                Id = Guid.NewGuid(),
+                CitizenId = citizenId,
+                ReportId = reportId,
+                IdempotencyKey = idempotencyKey,
+                Points = points,
+                Reason = reason ?? "Báo cáo và thu gom rác",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Lưu vào database
+            await _context.RewardPoints.AddAsync(rewardPoints, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return rewardPoints;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Lỗi khi tạo điểm thưởng: {ex.Message}", ex);
+        }
+    }
 }
