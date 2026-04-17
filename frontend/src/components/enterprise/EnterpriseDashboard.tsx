@@ -43,7 +43,7 @@ interface EnterpriseDashboardProps {
 }
 
 export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initialTab = "dashboard" }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [requests, setRequests] = useState<EnterpriseRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -600,6 +600,7 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
           <ProfileSettings
             profile={enterpriseProfile}
             email={user?.email ?? ""}
+            onLogout={logout}
           />
         )}
       </section>

@@ -6,6 +6,7 @@ namespace WastePlatform.Application.Enterprise.Analytics.Queries;
 
 public class GetEnterpriseReportAnalyticsQuery : IRequest<ReportAnalyticsDto>
 {
+    public Guid EnterpriseId { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
 }
@@ -24,10 +25,10 @@ public class GetEnterpriseReportAnalyticsQueryHandler : IRequestHandler<GetEnter
         var startDate = request.StartDate ?? DateTime.UtcNow.AddMonths(-1);
         var endDate = request.EndDate ?? DateTime.UtcNow;
 
-        // For enterprise, we need to filter by their service area and accepted waste types
-        // This would require additional filtering logic based on enterprise profile
-        // For now, return the same analytics but could be extended to filter by enterprise scope
-        
-        return await _analyticsRepository.GetReportAnalyticsAsync(startDate, endDate, cancellationToken);
+        return await _analyticsRepository.GetEnterpriseReportAnalyticsAsync(
+            request.EnterpriseId,
+            startDate,
+            endDate,
+            cancellationToken);
     }
 }

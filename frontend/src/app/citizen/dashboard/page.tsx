@@ -13,6 +13,15 @@ interface RecentReport {
   points?: number;
 }
 
+interface ReportDto {
+  id: string;
+  categoryName: string;
+  status: string;
+  createdAt: string;
+  address: string;
+  imageCount: number;
+}
+
 interface Stats {
   currentPoints: number;
   completedReports: number;
@@ -20,7 +29,6 @@ interface Stats {
   thisMonthReports: number;
 }
 
-// Thêm Interface cho Leaderboard
 interface TopLeader {
   id: string;
   name: string;
@@ -33,22 +41,120 @@ export default function CitizenDashboardPage() {
   const { user } = useAuth(); // Lấy thông tin user đăng nhập
   
   const [stats, setStats] = useState<Stats>({
-    currentPoints: 850,
-    completedReports: 45,
-    pendingReports: 3,
-    thisMonthReports: 12
+    currentPoints: 0,
+    completedReports: 0,
+    pendingReports: 0,
+    thisMonthReports: 0
   });
 
-  const [recentReports, setRecentReports] = useState<RecentReport[]>([
-    { id: "1", type: "Rác tái chế", status: "pending", date: "2 giờ trước", points: 15 },
-    { id: "2", type: "Rác hữu cơ", status: "collected", date: "Hôm qua", points: 10 },
-    { id: "3", type: "Rác nguy hại", status: "assigned", date: "2 ngày trước", points: 20 },
-    { id: "4", type: "Rác tái chế", status: "collected", date: "3 ngày trước", points: 15 },
-    { id: "5", type: "Rác hữu cơ", status: "pending", date: "4 ngày trước", points: 10 }
-  ]);
+  const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
+  const [loadingReports, setLoadingReports] = useState(true);
 
   const [topLeaders, setTopLeaders] = useState<TopLeader[]>([]);
   const [loadingLeaders, setLoadingLeaders] = useState(true);
+
+  // Fetch citizen stats and reports from API
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoadingReports(true);
+        
+        // Get auth token from localStorage (stored by AuthContext)
+        const token = localStorage.getItem('token');
+        console.log('DEBUG: Token =', token ? 'exists' : 'not found');
+        const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+        // Fetch rewards (current points)
+        console.log('DEBUG: Calling citizens/rewards API...');
+        const rewardsRes = await fetch(`${API_CONFIG.BASE_URL}/citizens/rewards`, { headers });
+        console.log('DEBUG: rewards response status =', rewardsRes.status);
+        let currentPoints = 0;
+        if (rewardsRes.ok) {
+          const rewardsJson = await rewardsRes.json();
+          console.log('DEBUG: rewards JSON =', rewardsJson);
+          currentPoints = rewardsJson.data?.totalPoints || 0;
+        }
+
+        // Fetch my reports
+        console.log('DEBUG: Calling my-reports API...');
+        const reportsRes = await fetch(`${API_CONFIG.BASE_URL}/reports/my-reports?page=1&pageSize=5`, { headers });
+        console.log('DEBUG: reports response status =', reportsRes.status);
+        let reports: ReportDto[] = [];
+        if (reportsRes.ok) {
+          const reportsJson = await reportsRes.json();
+          console.log('DEBUG: reports JSON =', reportsJson);
+          reports = reportsJson.reports || [];
+          
+          // Calculate stats from reports
+          console.log('DEBUG: reports data =', reports);
+          console.log('DEBUG: First report status =', reports[0]?.status);
+          
+          const completed = reports.filter((r: ReportDto) => r.status.toLowerCase() === 'collected').length;
+          const pending = reports.filter((r: ReportDto) => ['pending', 'accepted', 'assigned'].includes(r.status.toLowerCase())).length;
+          
+          // Calculate this month's reports
+          const now = new Date();
+          const thisMonth = reports.filter((r: ReportDto) => {
+            const reportDate = new Date(r.createdAt);
+            return reportDate.getMonth() === now.getMonth() && reportDate.getFullYear() === now.getFullYear();
+          }).length;
+
+          console.log('DEBUG: calculated stats =', { currentPoints, completed, pending, thisMonth });
+          
+          setStats({
+            currentPoints,
+            completedReports: completed,
+            pendingReports: pending,
+            thisMonthReports: thisMonth
+          });
+
+          // Format recent reports for display
+          const formattedReports = reports.slice(0, 5).map((r: ReportDto) => ({
+            id: r.id,
+            type: r.categoryName || 'Không xác định',
+            status: mapStatus(r.status),
+            date: formatTimeAgo(r.createdAt),
+            points: r.status === 'collected' ? 10 : undefined // Points awarded when collected
+          }));
+          setRecentReports(formattedReports);
+        }
+      } catch (error) {
+        console.error("DEBUG: Error fetching dashboard data:", error);
+      } finally {
+        setLoadingReports(false);
+      }
+    };
+
+    console.log('DEBUG: useEffect running, calling fetchDashboardData...');
+    fetchDashboardData();
+  }, []);
+
+  // Helper to map API status to UI status
+  const mapStatus = (apiStatus: string): "pending" | "accepted" | "assigned" | "collected" => {
+    switch (apiStatus.toLowerCase()) {
+      case 'pending': return 'pending';
+      case 'accepted': return 'accepted';
+      case 'assigned': return 'assigned';
+      case 'collected': return 'collected';
+      default: return 'pending';
+    }
+  };
+
+  // Helper to format time ago
+  const formatTimeAgo = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    if (diffDays === 1) return 'Hôm qua';
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString('vi-VN');
+  };
 
   // Fetch API Top 3 Bảng Xếp Hạng
   useEffect(() => {
@@ -81,18 +187,6 @@ export default function CitizenDashboardPage() {
     };
 
     fetchTopLeaders();
-  }, []);
-
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStats(prev => ({
-        ...prev,
-        currentPoints: prev.currentPoints + Math.floor(Math.random() * 5)
-      }));
-    }, 10000);
-
-    return () => clearInterval(interval);
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -310,27 +404,35 @@ export default function CitizenDashboardPage() {
           </div>
 
           <div className="space-y-3">
-            {recentReports.map((report) => (
-              <div key={report.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200">
-                    <FileText className="w-5 h-5 text-gray-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{report.type}</p>
-                    <p className="text-sm text-gray-600">{report.date}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {report.points && (
-                    <span className="text-sm font-semibold text-emerald-600">+{report.points} điểm</span>
-                  )}
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
-                    {getStatusLabel(report.status)}
-                  </span>
-                </div>
+            {loadingReports ? (
+              <div className="text-center py-6">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600"></div>
               </div>
-            ))}
+            ) : recentReports.length > 0 ? (
+              recentReports.map((report) => (
+                <div key={report.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200">
+                      <FileText className="w-5 h-5 text-gray-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{report.type}</p>
+                      <p className="text-sm text-gray-600">{report.date}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {report.points && (
+                      <span className="text-sm font-semibold text-emerald-600">+{report.points} điểm</span>
+                    )}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
+                      {getStatusLabel(report.status)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-500 py-4 text-sm">Chưa có báo cáo nào</div>
+            )}
           </div>
         </div>
 

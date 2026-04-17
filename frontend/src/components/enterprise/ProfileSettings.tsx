@@ -1,17 +1,19 @@
 import React, { useState } from "react";
-import { Button, Card, Input } from "../ui";
+import { Button, Card, Input, Modal } from "../ui";
 import { EnterpriseProfile } from "../../lib/api/enterpriseTaskApi";
 
 interface ProfileSettingsProps {
   profile: EnterpriseProfile;
   email: string;
+  onLogout: () => void;
 }
 
-export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ profile, email }) => {
+export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ profile, email, onLogout }) => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const handlePasswordSubmit = () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -27,11 +29,23 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ profile, email
     setPasswordMessage("Change password endpoint is not available yet.");
   };
 
+  const handleConfirmLogout = () => {
+    setIsLogoutModalOpen(false);
+    onLogout();
+  };
+
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h3 className="text-xl font-bold text-gray-900">Enterprise Profile</h3>
-        <p className="mt-1 text-sm text-gray-600">View your enterprise account information.</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">Enterprise Profile</h3>
+            <p className="mt-1 text-sm text-gray-600">View your enterprise account information.</p>
+          </div>
+          <Button variant="danger" size="sm" onClick={() => setIsLogoutModalOpen(true)}>
+            Đăng xuất
+          </Button>
+        </div>
 
         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
@@ -94,6 +108,20 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ profile, email
           <Button onClick={handlePasswordSubmit}>Change Password</Button>
         </div>
       </Card>
+
+      <Modal
+        isOpen={isLogoutModalOpen}
+        title="Xác nhận đăng xuất"
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+        confirmText="Đăng xuất"
+        cancelText="Ở lại"
+        size="sm"
+      >
+        <p className="text-sm text-gray-700">
+          Bạn có chắc muốn đăng xuất khỏi tài khoản doanh nghiệp này không?
+        </p>
+      </Modal>
     </div>
   );
 };

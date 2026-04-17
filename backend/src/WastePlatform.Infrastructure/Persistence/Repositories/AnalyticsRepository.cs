@@ -41,6 +41,25 @@ public class AnalyticsRepository : IAnalyticsRepository
             .Include(r => r.WasteCategory)
             .ToListAsync(cancellationToken);
 
+        return BuildReportAnalytics(reports, startDate, endDate);
+    }
+
+    public async Task<ReportAnalyticsDto> GetEnterpriseReportAnalyticsAsync(Guid enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+    {
+        var reports = await _context.WasteReports
+            .Where(r => r.CollectionTask != null
+                        && r.CollectionTask.EnterpriseId == enterpriseId
+                        && r.CreatedAt >= startDate
+                        && r.CreatedAt <= endDate)
+            .Include(r => r.WasteCategory)
+            .ToListAsync(cancellationToken);
+
+        return BuildReportAnalytics(reports, startDate, endDate);
+    }
+
+    private static ReportAnalyticsDto BuildReportAnalytics(List<Domain.Entities.WasteReport> reports, DateTime startDate, DateTime endDate)
+    {
+
         var totalReports = reports.Count;
         var acceptedReports = reports.Count(r => r.Status == ReportStatus.Accepted);
         var pendingReports = reports.Count(r => r.Status == ReportStatus.Pending);
