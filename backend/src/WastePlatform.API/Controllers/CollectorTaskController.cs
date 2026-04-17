@@ -2,11 +2,12 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Domain.Entities;
 using WastePlatform.Domain.Enums;
 using WastePlatform.Infrastructure.Persistence;
-using Microsoft.AspNetCore.SignalR;
-using WastePlatform.API.Hubs;
+using WastePlatform.Infrastructure.SignalR;
 
 namespace WastePlatform.API.Controllers;
 
@@ -17,11 +18,13 @@ public class CollectorTaskController : ControllerBase
 {
     private readonly WastePlatformDbContext _context;
     private readonly IHubContext<TaskHub> _hubContext;
+    private readonly INotificationService _notificationService;
 
-    public CollectorTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext)
+    public CollectorTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext, INotificationService notificationService)
     {
         _context = context;
         _hubContext = hubContext;
+        _notificationService = notificationService;
     }
 
     private async Task<Collector?> GetCurrentCollectorAsync()
@@ -180,6 +183,21 @@ public class CollectorTaskController : ControllerBase
             // Phát sóng sự kiện SignalR tới toàn bộ Client
             await _hubContext.Clients.All.SendAsync("TaskStatusUpdated", id, CollectionTaskStatus.OnTheWay.ToString());
 
+            // Gửi thông báo: Collector đang đến (Trigger #4)
+            var taskWithReport = await _context.CollectionTasks
+                .Include(t => t.WasteReport)
+                .Include(t => t.Collector)
+                    .ThenInclude(c => c.User)
+                .FirstOrDefaultAsync(t => t.Id == id);
+            
+            if (taskWithReport?.Collector != null)
+            {
+                await _notificationService.NotifyCollectorOnTheWayAsync(
+                    taskWithReport.WasteReport.CitizenId,
+                    taskWithReport.ReportId,
+                    taskWithReport.Collector.User.FullName);
+            }
+
             return Ok(new { message = "Task status updated to OnTheWay.", taskId = id });
         }
         catch (InvalidOperationException ex)
@@ -274,6 +292,7 @@ public class CollectorTaskController : ControllerBase
             task.WasteReport.Collect();
 
             // Thực hiện cộng điểm thưởng cho thu gom (Reward System)
+            int earnedPoints = 0;
             if (task.WasteReport.WasteCategoryId.HasValue)
             {
                 var rule = await _context.RewardRules
@@ -283,7 +302,7 @@ public class CollectorTaskController : ControllerBase
                 
                 if (rule != null)
                 {
-                    int earnedPoints = rule.PointsPerReport + rule.BonusQuality;
+                    earnedPoints = rule.PointsPerReport + rule.BonusQuality;
 
                     var reward = new RewardPoints
                     {
@@ -304,6 +323,12 @@ public class CollectorTaskController : ControllerBase
             }
 
             await _context.SaveChangesAsync();
+
+            // Gửi thông báo: Đã thu gom + nhận điểm (Trigger #5 - gộp)
+            await _notificationService.NotifyReportCollectedAsync(
+                task.WasteReport.CitizenId,
+                task.ReportId,
+                earnedPoints);
             
             // Phát sóng sự kiện SignalR cho task status
             await _hubContext.Clients.All.SendAsync("TaskStatusUpdated", id, CollectionTaskStatus.Collected.ToString());
