@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import { Navbar } from "@/components/layout/Navbar";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 
 export default function EnterpriseLayout({
@@ -10,10 +9,7 @@ export default function EnterpriseLayout({
 }) {
   return (
     <RouteGuard requiredRole="enterprise">
-      <div className="min-h-screen">
-        <Navbar />
-        {children}
-      </div>
+      <div className="min-h-screen">{children}</div>
     </RouteGuard>
   );
 }

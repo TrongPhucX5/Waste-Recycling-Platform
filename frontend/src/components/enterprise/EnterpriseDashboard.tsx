@@ -43,7 +43,24 @@ interface EnterpriseDashboardProps {
 }
 
 export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initialTab = "dashboard" }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const normalizeReportStatus = (status?: string) => {
+    const upper = (status ?? "Pending").toUpperCase();
+    switch (upper) {
+      case "PENDING":
+        return "Pending";
+      case "ACCEPTED":
+        return "Accepted";
+      case "ASSIGNED":
+        return "Assigned";
+      case "COLLECTED":
+        return "Collected";
+      case "REJECTED":
+        return "Rejected";
+      default:
+        return "Pending";
+    }
+  };
   const [activeTab, setActiveTab] = useState(initialTab);
   const [requests, setRequests] = useState<EnterpriseRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +100,7 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
           type: report.categoryName || "Unknown",
           quantity: "N/A",
           location: report.address || "Unknown",
-          status: report.status || "Pending",
+          status: normalizeReportStatus(report.status),
           date: new Date(report.createdAt).toLocaleDateString("vi-VN"),
           requester: report.citizenName || "Unknown",
         }));
@@ -383,7 +400,7 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
               <div className="rounded-lg bg-gray-50 px-3 py-2 text-center">
                 <p className="text-xs text-gray-500">Pending</p>
                 <p className="text-lg font-semibold text-amber-600">
-                  {requests.filter((request) => request.status === "PENDING").length}
+                  {requests.filter((request) => request.status === "Pending").length}
                 </p>
               </div>
               <div className="rounded-lg bg-gray-50 px-3 py-2 text-center">
@@ -486,6 +503,7 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
           <ProfileSettings
             profile={enterpriseProfile}
             email={user?.email ?? ""}
+            onLogout={logout}
           />
         )}
       </section>

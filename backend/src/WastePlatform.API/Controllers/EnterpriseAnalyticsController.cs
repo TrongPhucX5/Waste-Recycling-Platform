@@ -1,7 +1,9 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using WastePlatform.Application.Enterprise.Analytics.Queries;
+using WastePlatform.Application.Enterprise.Queries;
 
 namespace WastePlatform.API.Controllers;
 
@@ -28,8 +30,21 @@ public class EnterpriseAnalyticsController : ControllerBase
     {
         try
         {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid user token." });
+            }
+
+            var enterprise = await _mediator.Send(new GetEnterpriseByUserIdQuery { UserId = userId });
+            if (enterprise == null)
+            {
+                return Unauthorized(new { message = "Enterprise profile not found for current user." });
+            }
+
             var result = await _mediator.Send(new GetEnterpriseReportAnalyticsQuery 
             { 
+                EnterpriseId = enterprise.Id,
                 StartDate = startDate, 
                 EndDate = endDate 
             });
