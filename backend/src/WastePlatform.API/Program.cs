@@ -92,11 +92,12 @@ builder.Services.AddSignalR();
 // ── CORS ─────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", corsBuilder =>
+    options.AddPolicy("AllowFrontend", corsBuilder =>
         corsBuilder
-            .AllowAnyOrigin()
+            .WithOrigins("http://localhost:3000")
             .AllowAnyMethod()
-            .AllowAnyHeader());
+            .AllowAnyHeader()
+            .AllowCredentials()); // Required for SignalR with authentication
 });
 
 // ── Controllers & Swagger ─────────────────────────────────────────────
@@ -179,7 +180,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 // NOTE: No UseHttpsRedirection() — Docker runs plain HTTP on port 8080
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 
 app.UseMiddleware<WastePlatform.API.Middleware.ValidateUserStatusMiddleware>();
