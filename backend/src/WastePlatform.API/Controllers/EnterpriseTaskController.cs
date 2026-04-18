@@ -2,12 +2,13 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Domain.Entities;
 using WastePlatform.Domain.Enums;
 using WastePlatform.Infrastructure.Persistence;
-using Microsoft.AspNetCore.SignalR;
-using WastePlatform.API.Hubs;
+using WastePlatform.Infrastructure.SignalR;
 
 namespace WastePlatform.API.Controllers;
 
@@ -18,11 +19,13 @@ public class EnterpriseTaskController : ControllerBase
 {
     private readonly WastePlatformDbContext _context;
     private readonly IHubContext<TaskHub> _hubContext;
+    private readonly INotificationService _notificationService;
 
-    public EnterpriseTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext)
+    public EnterpriseTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext, INotificationService notificationService)
     {
         _context = context;
         _hubContext = hubContext;
+        _notificationService = notificationService;
     }
 
     private async Task<Enterprise?> GetCurrentEnterpriseAsync()
@@ -166,6 +169,21 @@ public class EnterpriseTaskController : ControllerBase
 
             // Phát sóng sự kiện SignalR tới toàn bộ Client
             await _hubContext.Clients.All.SendAsync("TaskStatusUpdated", id, CollectionTaskStatus.Assigned.ToString());
+
+            // Gửi thông báo: Report được phân công (Trigger #3 - Accepted → Assigned)
+            var taskWithReport = await _context.CollectionTasks
+                .Include(t => t.WasteReport)
+                .Include(t => t.Collector)
+                    .ThenInclude(c => c.User)
+                .FirstOrDefaultAsync(t => t.Id == id);
+            
+            if (taskWithReport?.Collector != null)
+            {
+                await _notificationService.NotifyReportAssignedAsync(
+                    taskWithReport.WasteReport.CitizenId, 
+                    taskWithReport.ReportId, 
+                    taskWithReport.Collector.User.FullName);
+            }
 
             return Ok(new 
             { 

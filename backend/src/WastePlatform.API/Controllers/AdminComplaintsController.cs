@@ -2,10 +2,11 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using WastePlatform.API.Hubs;
 using WastePlatform.Application.Admin.Complaints.Commands;
 using WastePlatform.Application.Admin.Complaints.DTOs;
 using WastePlatform.Application.Admin.Complaints.Queries;
+using WastePlatform.Application.Common.Interfaces;
+using WastePlatform.Infrastructure.SignalR;
 
 namespace WastePlatform.API.Controllers;
 
@@ -16,11 +17,13 @@ public class AdminComplaintsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IHubContext<TaskHub> _hubContext;
+    private readonly INotificationService _notificationService;
 
-    public AdminComplaintsController(IMediator mediator, IHubContext<TaskHub> hubContext)
+    public AdminComplaintsController(IMediator mediator, IHubContext<TaskHub> hubContext, INotificationService notificationService)
     {
         _mediator = mediator;
         _hubContext = hubContext;
+        _notificationService = notificationService;
     }
 
     /// <summary>Get all complaints with pagination and filtering</summary>
@@ -103,7 +106,7 @@ public class AdminComplaintsController : ControllerBase
             if (!result.Success)
                 return NotFound(new { message = result.Message });
 
-            // Send SignalR notification to reporting citizen
+            // Send SignalR notification and create in-app notification
             try
             {
                 // retrieve complaint to know reporter id
@@ -116,6 +119,12 @@ public class AdminComplaintsController : ControllerBase
                         message = "Your complaint has been resolved",
                         adminResponse = request.AdminResponse
                     });
+
+                    // Gửi thông báo: Phản hồi được trả lời (Trigger #7)
+                    await _notificationService.NotifyComplaintRepliedAsync(
+                        complaint.CitizenId,
+                        id,
+                        "Quản trị viên");
                 }
             }
             catch

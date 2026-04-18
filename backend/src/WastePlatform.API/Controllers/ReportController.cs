@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Application.Reports.Commands;
 using WastePlatform.Application.Reports.Queries;
 using WastePlatform.Domain.Entities;
@@ -19,11 +20,13 @@ public class ReportController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly WastePlatformDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public ReportController(IMediator mediator, WastePlatformDbContext context)
+    public ReportController(IMediator mediator, WastePlatformDbContext context, INotificationService notificationService)
     {
         _mediator = mediator;
         _context = context;
+        _notificationService = notificationService;
     }
 
     /// <summary>Tạo báo cáo rác mới</summary>
@@ -59,6 +62,9 @@ public class ReportController : ControllerBase
             };
 
             var reportId = await _mediator.Send(command);
+
+            // Gửi thông báo: Báo cáo mới được tạo (Trigger #1)
+            await _notificationService.NotifyReportCreatedAsync(userId, reportId);
 
             // Re-use GetReportByIdQuery to construct the response DTO natively
             var createdReportDto = await _mediator.Send(new GetReportByIdQuery { Id = reportId });
@@ -242,6 +248,9 @@ public class ReportController : ControllerBase
             _context.WasteReports.Update(report);
             await _context.SaveChangesAsync();
 
+            // Gửi thông báo: Report được chấp nhận (Trigger #2 - Pending → Accepted)
+            await _notificationService.NotifyReportAcceptedAsync(report.CitizenId, report.Id);
+
             return Ok(new
             {
                 message = "Report accepted successfully",
@@ -283,10 +292,13 @@ public class ReportController : ControllerBase
             report.Reject();
 
             // Lưu lý do từ chối (nếu bảng WasteReports của ông có chỗ lưu, hoặc chỉ cần trả về log)
-            // Tạm thời chỉ đổi status.
+            // Tạm thởi chỉ đổi status.
 
             _context.WasteReports.Update(report);
             await _context.SaveChangesAsync();
+
+            // Gửi thông báo: Report bị từ chối (Trigger #6)
+            await _notificationService.NotifyReportRejectedAsync(report.CitizenId, report.Id, request?.Reason);
 
             return Ok(new
             {

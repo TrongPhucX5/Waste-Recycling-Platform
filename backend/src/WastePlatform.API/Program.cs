@@ -4,11 +4,12 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Reflection; 
 using WastePlatform.Application.Common.Interfaces;
+using WastePlatform.Application.Services;
 using WastePlatform.Infrastructure.Persistence;
 using WastePlatform.Infrastructure.Services;
+using WastePlatform.Infrastructure.SignalR;
 // Thêm thư mục chứa UserRepository (điều chỉnh lại nếu bạn để thư mục khác nhé)
 using WastePlatform.Infrastructure.Persistence.Repositories; 
-using WastePlatform.API.Hubs;
 using WastePlatform.API.Converters;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +39,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience            = builder.Configuration["JwtSettings:Audience"],
             IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
         };
+
+        // Cho phép SignalR WebSockets nhận token từ Query String
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -63,6 +78,11 @@ builder.Services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
 // 👉 Repositories for Citizen Module (Rewards & Complaints)
 builder.Services.AddScoped<IRewardPointsRepository, RewardPointsRepository>();
 
+// 👉 Notification System
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IRealTimeNotifier, SignalRRealTimeNotifier>();
+
 // Đăng ký MediatR để xử lý CQRS (Queries/Commands)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));
 
@@ -72,11 +92,12 @@ builder.Services.AddSignalR();
 // ── CORS ─────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", corsBuilder =>
+    options.AddPolicy("AllowFrontend", corsBuilder =>
         corsBuilder
-            .AllowAnyOrigin()
+            .WithOrigins("http://localhost:3000")
             .AllowAnyMethod()
-            .AllowAnyHeader());
+            .AllowAnyHeader()
+            .AllowCredentials()); // Required for SignalR with authentication
 });
 
 // ── Controllers & Swagger ─────────────────────────────────────────────
@@ -159,7 +180,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 // NOTE: No UseHttpsRedirection() — Docker runs plain HTTP on port 8080
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 
 app.UseMiddleware<WastePlatform.API.Middleware.ValidateUserStatusMiddleware>();

@@ -61,34 +61,24 @@ export default function CitizenDashboardPage() {
         
         // Get auth token from localStorage (stored by AuthContext)
         const token = localStorage.getItem('token');
-        console.log('DEBUG: Token =', token ? 'exists' : 'not found');
         const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
 
         // Fetch rewards (current points)
-        console.log('DEBUG: Calling citizens/rewards API...');
         const rewardsRes = await fetch(`${API_CONFIG.BASE_URL}/citizens/rewards`, { headers });
-        console.log('DEBUG: rewards response status =', rewardsRes.status);
         let currentPoints = 0;
         if (rewardsRes.ok) {
           const rewardsJson = await rewardsRes.json();
-          console.log('DEBUG: rewards JSON =', rewardsJson);
           currentPoints = rewardsJson.data?.totalPoints || 0;
         }
 
         // Fetch my reports
-        console.log('DEBUG: Calling my-reports API...');
         const reportsRes = await fetch(`${API_CONFIG.BASE_URL}/reports/my-reports?page=1&pageSize=5`, { headers });
-        console.log('DEBUG: reports response status =', reportsRes.status);
         let reports: ReportDto[] = [];
         if (reportsRes.ok) {
           const reportsJson = await reportsRes.json();
-          console.log('DEBUG: reports JSON =', reportsJson);
           reports = reportsJson.reports || [];
           
           // Calculate stats from reports
-          console.log('DEBUG: reports data =', reports);
-          console.log('DEBUG: First report status =', reports[0]?.status);
-          
           const completed = reports.filter((r: ReportDto) => r.status.toLowerCase() === 'collected').length;
           const pending = reports.filter((r: ReportDto) => ['pending', 'accepted', 'assigned'].includes(r.status.toLowerCase())).length;
           
@@ -99,8 +89,6 @@ export default function CitizenDashboardPage() {
             return reportDate.getMonth() === now.getMonth() && reportDate.getFullYear() === now.getFullYear();
           }).length;
 
-          console.log('DEBUG: calculated stats =', { currentPoints, completed, pending, thisMonth });
-          
           setStats({
             currentPoints,
             completedReports: completed,
@@ -119,13 +107,12 @@ export default function CitizenDashboardPage() {
           setRecentReports(formattedReports);
         }
       } catch (error) {
-        console.error("DEBUG: Error fetching dashboard data:", error);
+        console.error("Error fetching dashboard data:", error);
       } finally {
         setLoadingReports(false);
       }
     };
 
-    console.log('DEBUG: useEffect running, calling fetchDashboardData...');
     fetchDashboardData();
   }, []);
 

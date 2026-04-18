@@ -191,9 +191,12 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
     }
   };
 
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
   // SignalR: notify enterprise of resolved complaints (for completeness)
   useSignalR({
     enabled: !!user,
+    token,
     onComplaintResolved: (complaintId, message, adminResponse) => {
       // push a simple notification to the UI
       setComplaintsData((prev: any) => {

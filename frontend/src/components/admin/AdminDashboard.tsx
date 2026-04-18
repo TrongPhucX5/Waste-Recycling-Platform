@@ -31,9 +31,11 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("analytics");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [taskStatusUpdates, setTaskStatusUpdates] = useState<Record<string, string>>({});
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   useSignalR({
     enabled: true,
+    token,
     onTaskStatusUpdated: (taskId, status) => {
       setTaskStatusUpdates((prev) => ({
         ...prev,
