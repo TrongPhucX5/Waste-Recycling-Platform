@@ -32,7 +32,13 @@ public class ComplaintListDto
     public string Content { get; set; } = null!;
     public ComplaintStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public DateTime? ResolvedAt { get; set; }
     public string? AdminResponse { get; set; }
+    // Enterprise response fields
+    public string? EnterpriseResponse { get; set; }
+    public DateTime? EnterpriseRespondedAt { get; set; }
+    public string? EnterpriseName { get; set; }
 }
 
 /// <summary>DTO for paginated complaints response</summary>

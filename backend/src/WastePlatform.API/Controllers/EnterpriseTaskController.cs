@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using System.Text.Json;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using WastePlatform.Application.Complaints.Queries;
 using WastePlatform.Application.Common.Interfaces;
 using WastePlatform.Domain.Entities;
 using WastePlatform.Domain.Enums;
@@ -20,12 +22,14 @@ public class EnterpriseTaskController : ControllerBase
     private readonly WastePlatformDbContext _context;
     private readonly IHubContext<TaskHub> _hubContext;
     private readonly INotificationService _notificationService;
+    private readonly IMediator _mediator;
 
-    public EnterpriseTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext, INotificationService notificationService)
+    public EnterpriseTaskController(WastePlatformDbContext context, IHubContext<TaskHub> hubContext, INotificationService notificationService, IMediator mediator)
     {
         _context = context;
         _hubContext = hubContext;
         _notificationService = notificationService;
+        _mediator = mediator;
     }
 
     private async Task<Enterprise?> GetCurrentEnterpriseAsync()
@@ -569,6 +573,90 @@ public class EnterpriseTaskController : ControllerBase
             Timeline = timeline.OrderBy(t => t.Timestamp).ToList()
         });
     }
+
+    /// <summary>
+    /// Lấy danh sách khiếu nại gửi đến Enterprise này
+    /// </summary>
+    [HttpGet("complaints")]
+    public async Task<IActionResult> GetComplaints([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] ComplaintStatus? status = null)
+    {
+        try
+        {
+            var enterprise = await GetCurrentEnterpriseAsync();
+            if (enterprise == null)
+                return Unauthorized(new { message = "Enterprise profile not found." });
+
+            var result = await _mediator.Send(new GetEnterpriseComplaintsQuery
+            {
+                EnterpriseId = enterprise.Id,
+                Page = page,
+                PageSize = pageSize,
+                Status = status
+            });
+
+            return Ok(new
+            {
+                message = "Complaints retrieved successfully",
+                data = result.Complaints,
+                pagination = new
+                {
+                    currentPage = page,
+                    pageSize = pageSize,
+                    totalItems = result.Total,
+                    totalPages = result.TotalPages
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Phản hồi và giải quyết khiếu nại
+    /// </summary>
+    [HttpPost("complaints/{id}/respond")]
+    public async Task<IActionResult> RespondToComplaint(Guid id, [FromBody] EnterpriseRespondRequest request)
+    {
+        try
+        {
+            var enterprise = await GetCurrentEnterpriseAsync();
+            if (enterprise == null)
+                return Unauthorized(new { message = "Enterprise profile not found." });
+
+            var result = await _mediator.Send(new Application.Complaints.Commands.EnterpriseRespondToComplaintCommand
+            {
+                EnterpriseId = enterprise.Id,
+                EnterpriseName = enterprise.CompanyName,
+                ComplaintId = id,
+                Response = request.Response,
+                ResolveImmediately = request.ResolveImmediately,
+                EscalateToAdmin = request.EscalateToAdmin
+            });
+
+            if (!result.Success)
+                return BadRequest(new { message = result.Message });
+
+            return Ok(new
+            {
+                message = result.Message,
+                complaintId = result.ComplaintId,
+                status = result.NewStatus
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+        }
+    }
+}
+
+public class EnterpriseRespondRequest
+{
+    public string? Response { get; set; }
+    public bool ResolveImmediately { get; set; } = false;
+    public bool EscalateToAdmin { get; set; } = false;
 }
 
 /// <summary>

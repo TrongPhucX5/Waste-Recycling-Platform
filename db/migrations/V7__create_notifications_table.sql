@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS notifications (
     id CHAR(36) PRIMARY KEY,
-    citizen_id CHAR(36) NOT NULL,
+    citizen_id CHAR(36) NULL,                               -- NULL nếu là thông báo chung cho admin
     type VARCHAR(50) NOT NULL,
     channel VARCHAR(20) NOT NULL DEFAULT 'InApp',
     status VARCHAR(20) NOT NULL DEFAULT 'Unread',
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     read_at DATETIME(6),
     
-    FOREIGN KEY (citizen_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (citizen_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Indexes for performance

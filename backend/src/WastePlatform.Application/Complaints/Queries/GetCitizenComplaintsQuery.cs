@@ -38,7 +38,12 @@ public class GetCitizenComplaintsQueryHandler : IRequestHandler<GetCitizenCompla
             Content = c.Content,
             Status = c.Status,
             CreatedAt = c.CreatedAt,
-            AdminResponse = c.AdminResponse
+            UpdatedAt = c.UpdatedAt,
+            ResolvedAt = c.ResolvedAt,
+            AdminResponse = c.AdminResponse,
+            EnterpriseResponse = c.EnterpriseResponse,
+            EnterpriseRespondedAt = c.EnterpriseRespondedAt,
+            EnterpriseName = c.Enterprise?.CompanyName
         }).ToList();
 
         return new ComplaintsResponseDto

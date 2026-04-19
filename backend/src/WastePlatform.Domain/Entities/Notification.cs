@@ -5,7 +5,7 @@ namespace WastePlatform.Domain.Entities;
 public class Notification
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid CitizenId { get; set; }                    // Người nhận thông báo
+    public Guid? CitizenId { get; set; }                   // Người nhận thông báo (null nếu là thông báo chung cho admin)
     public NotificationType Type { get; set; }                // Loại thông báo
     public NotificationChannel Channel { get; set; }        // Kênh gửi
     public NotificationStatus Status { get; set; } = NotificationStatus.Unread;

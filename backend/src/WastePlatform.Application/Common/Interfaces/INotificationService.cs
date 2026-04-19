@@ -24,4 +24,7 @@ public interface INotificationService
     
     // 7. Phản hồi/khiếu nại được trả lời
     Task NotifyComplaintRepliedAsync(Guid citizenId, Guid complaintId, string repliedBy, CancellationToken cancellationToken = default);
+
+    // 8. Khiếu nại được chuyển lên Admin
+    Task NotifyComplaintEscalatedAsync(Guid complaintId, CancellationToken cancellationToken = default);
 }

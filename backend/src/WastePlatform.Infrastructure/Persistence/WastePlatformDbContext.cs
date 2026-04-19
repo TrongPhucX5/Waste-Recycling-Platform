@@ -324,7 +324,15 @@ public class WastePlatformDbContext : DbContext
             entity.Property(e => e.ReportId).HasColumnName("report_id");
             entity.Property(e => e.Content).HasColumnName("content").HasMaxLength(2000);
             entity.Property(e => e.AdminResponse).HasColumnName("admin_response").HasMaxLength(2000);
-            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
+            entity.Property(e => e.EnterpriseResponse).HasColumnName("enterprise_response").HasMaxLength(2000);
+            entity.Property(e => e.EnterpriseRespondedAt).HasColumnName("enterprise_responded_at").IsRequired(false);
+            entity.Property(e => e.EscalationReason).HasColumnName("escalation_reason").HasMaxLength(1000).IsRequired(false);
+            // Convert ComplaintStatus enum to snake_case string for MySQL ENUM
+            var complaintStatusConverter = new ValueConverter<ComplaintStatus, string>(
+                v => v == ComplaintStatus.InProgress ? "in_progress" : v.ToString().ToLower(),
+                v => v == "in_progress" ? ComplaintStatus.InProgress : Enum.Parse<ComplaintStatus>(v, true)
+            );
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion(complaintStatusConverter);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.ResolvedAt).HasColumnName("resolved_at").IsRequired(false);
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired(false);
@@ -333,7 +341,7 @@ public class WastePlatformDbContext : DbContext
                 .WithMany(u => u.Complaints)
                 .HasForeignKey(e => e.CitizenId);
 
-            entity.HasOne<Enterprise>()
+            entity.HasOne(e => e.Enterprise)
                 .WithMany()
                 .HasForeignKey(e => e.EnterpriseId)
                 .OnDelete(DeleteBehavior.SetNull);
@@ -380,7 +388,7 @@ public class WastePlatformDbContext : DbContext
             entity.ToTable("notifications");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.CitizenId).HasColumnName("citizen_id");
+            entity.Property(e => e.CitizenId).HasColumnName("citizen_id").IsRequired(false);
             entity.Property(e => e.Type).HasColumnName("type").HasConversion<string>();
             entity.Property(e => e.Channel).HasColumnName("channel").HasConversion<string>();
             entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
@@ -395,7 +403,8 @@ public class WastePlatformDbContext : DbContext
             entity.HasOne(e => e.Citizen)
                 .WithMany()
                 .HasForeignKey(e => e.CitizenId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(e => e.CitizenId);
             entity.HasIndex(e => new { e.CitizenId, e.Status });

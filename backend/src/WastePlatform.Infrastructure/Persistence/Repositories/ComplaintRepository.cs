@@ -26,6 +26,7 @@ public class ComplaintRepository : IComplaintRepository
         return await _context.Complaints
             .Include(c => c.Citizen)
             .Include(c => c.WasteReport)
+            .Include(c => c.Enterprise)
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
@@ -65,6 +66,7 @@ public class ComplaintRepository : IComplaintRepository
             .Where(c => c.CitizenId == citizenId)
             .Include(c => c.Citizen)
             .Include(c => c.WasteReport)
+            .Include(c => c.Enterprise)
             .AsQueryable();
 
         if (status.HasValue)
@@ -89,6 +91,7 @@ public class ComplaintRepository : IComplaintRepository
             .Where(c => c.EnterpriseId == enterpriseId)
             .Include(c => c.Citizen)
             .Include(c => c.WasteReport)
+            .Include(c => c.Enterprise)
             .AsQueryable();
 
         if (status.HasValue)

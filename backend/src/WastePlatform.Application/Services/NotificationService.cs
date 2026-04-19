@@ -176,5 +176,26 @@ public class NotificationService : INotificationService
 
         await _notificationRepository.AddAsync(notification, cancellationToken);
         await _notificationRepository.SaveChangesAsync(cancellationToken);
+
+        await PushNotificationAsync(citizenId, notification);
+    }
+
+    public async Task NotifyComplaintEscalatedAsync(Guid complaintId, CancellationToken cancellationToken = default)
+    {
+        // Notify all admins about the escalation
+        var notification = new Notification
+        {
+            Type = NotificationType.ComplaintEscalated,
+            Channel = NotificationChannel.InApp,
+            Title = "Khiếu nại được chuyển lên Admin",
+            Message = "Một khiếu nại đã được Citizen chuyển lên Admin xử lý.",
+            RelatedEntityId = complaintId,
+            RelatedEntityType = "Complaint",
+            ActionUrl = $"/admin/complaints/{complaintId}"
+        };
+
+        // For now, save to system - admin notification logic would need admin user IDs
+        await _notificationRepository.AddAsync(notification, cancellationToken);
+        await _notificationRepository.SaveChangesAsync(cancellationToken);
     }
 }

@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Bell, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSignalR, NotificationPayload } from '@/hooks/useSignalR';
 import { API_CONFIG } from '@/lib/api/config';
@@ -15,12 +16,15 @@ interface Notification {
   type: 'info' | 'success' | 'warning' | 'error';
   timestamp: Date;
   isRead: boolean;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
 }
 
 export const NotificationCenter: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const { user, token } = useAuth();
+  const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -39,7 +43,9 @@ export const NotificationCenter: React.FC = () => {
           message: n.message,
           type: mapType(n.type),
           timestamp: new Date(n.createdAt),
-          isRead: n.status === 'Read'
+          isRead: n.status === 'Read',
+          relatedEntityType: n.relatedEntityType,
+          relatedEntityId: n.relatedEntityId
         })) || [];
         setNotifications(apiNotifications);
       }
@@ -49,8 +55,9 @@ export const NotificationCenter: React.FC = () => {
   }, [token]);
 
   // Map backend type to frontend type
-  const mapType = (type: string): 'info' | 'success' | 'warning' | 'error' => {
-    switch (type?.toLowerCase()) {
+  const mapType = (type: string | number | null | undefined): 'info' | 'success' | 'warning' | 'error' => {
+    const typeStr = typeof type === 'string' ? type.toLowerCase() : String(type).toLowerCase();
+    switch (typeStr) {
       case 'success': return 'success';
       case 'warning': return 'warning';
       case 'error': return 'error';
@@ -80,18 +87,26 @@ export const NotificationCenter: React.FC = () => {
     }
   });
 
-  const markAsRead = async (id: string) => {
+  const handleNotificationClick = async (notif: Notification) => {
     if (!token) return;
+    
+    // Mark as read
     try {
-      await fetch(`${API_CONFIG.SERVER_URL}/api/notifications/${id}/read`, {
+      await fetch(`${API_CONFIG.SERVER_URL}/api/notifications/${notif.id}/read`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      // Refetch to get updated unread count from server
       await fetchNotifications();
     } catch (err) {
       console.error('Failed to mark as read', err);
     }
+    
+    // Navigate based on notification type
+    if (notif.relatedEntityType?.toLowerCase() === 'complaint') {
+      router.push('/citizen/complaints');
+    }
+    
+    setIsOpen(false);
   };
 
   const markAllAsRead = async () => {
@@ -172,7 +187,7 @@ export const NotificationCenter: React.FC = () => {
             notifications.map((notif: Notification) => (
               <div
                 key={notif.id}
-                onClick={() => markAsRead(notif.id)}
+                onClick={() => handleNotificationClick(notif)}
                 className={`p-4 border-b hover:bg-gray-100 cursor-pointer transition-colors ${
                   !notif.isRead ? 'bg-blue-50' : 'bg-white'
                 }`}

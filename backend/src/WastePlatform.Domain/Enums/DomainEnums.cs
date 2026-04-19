@@ -29,5 +29,6 @@ public enum ComplaintStatus
     Open,
     InProgress,
     Resolved,
-    Rejected
+    Rejected,
+    Escalated
 }

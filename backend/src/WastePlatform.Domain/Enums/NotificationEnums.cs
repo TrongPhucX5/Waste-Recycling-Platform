@@ -8,7 +8,8 @@ public enum NotificationType
     CollectorOnTheWay,  // 4. Collector bắt đầu đi
     ReportCollected,    // 5. Đã thu gom + nhận điểm
     ReportRejected,     // 6. Bị từ chối
-    ComplaintReplied    // 7. Phản hồi được trả lời
+    ComplaintReplied,   // 7. Phản hồi được trả lời
+    ComplaintEscalated  // 8. Khiếu nại được chuyển lên Admin
 }
 
 public enum NotificationChannel

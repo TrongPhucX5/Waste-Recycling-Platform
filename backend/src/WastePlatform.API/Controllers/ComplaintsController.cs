@@ -124,6 +124,42 @@ public class ComplaintsController : ControllerBase
         }
     }
 
+    [HttpPost("{id:guid}/escalate")]
+    [Authorize(Roles = "Citizen")]
+    public async Task<IActionResult> EscalateToAdmin(Guid id, [FromBody] CitizenEscalateRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized(new { message = "Invalid or missing user ID in token" });
+
+            var result = await _mediator.Send(new CitizenEscalateComplaintCommand
+            {
+                ComplaintId = id,
+                CitizenId = userId,
+                Reason = request.Reason ?? string.Empty
+            });
+
+            if (!result.Success)
+                return BadRequest(new { message = result.Message });
+
+            return Ok(new
+            {
+                message = result.Message,
+                data = result
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] EscalateToAdmin failed: {ex.GetType().Name} - {ex.Message}");
+            Console.WriteLine($"[ERROR] Stack trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+                Console.WriteLine($"[ERROR] Inner: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
+            return StatusCode(500, new { message = "Internal server error", error = ex.Message, type = ex.GetType().Name });
+        }
+    }
+
     private Guid GetUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -131,4 +167,9 @@ public class ComplaintsController : ControllerBase
             return Guid.Empty;
         return userId;
     }
+}
+
+public class CitizenEscalateRequest
+{
+    public string? Reason { get; set; }
 }

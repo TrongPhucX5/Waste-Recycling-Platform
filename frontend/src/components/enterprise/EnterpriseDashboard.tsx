@@ -67,6 +67,9 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
   const [rewardError, setRewardError] = useState<string | null>(null);
   const [complaintsData, setComplaintsData] = useState<any>(null);
   const [complaintsLoading, setComplaintsLoading] = useState(false);
+  const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
+  const [responseText, setResponseText] = useState("");
+  const [respondingComplaintId, setRespondingComplaintId] = useState<string | null>(null);
 
   // Capacity State for overview card
   const [capacity, setCapacity] = useState({
@@ -171,27 +174,84 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (activeTab === "complaints") {
+      fetchComplaints();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   const fetchComplaints = async () => {
     setComplaintsLoading(true);
     try {
-      const token = (user ? (localStorage.getItem("token") || null) : null);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'}/enterprise/complaints?page=1&pageSize=20`, {
+      const token = localStorage.getItem("token");
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      const res = await fetch(`${baseUrl}/enterprise/tasks/complaints?page=1&pageSize=20`, {
         headers: { Authorization: token ? `Bearer ${token}` : "" },
       });
       if (res.ok) {
         const json = await res.json();
-        setComplaintsData(json);
+        setComplaintsData(json.data || []);
       } else {
         console.error('Failed to load complaints', res.status);
+        setComplaintsData([]);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching complaints:', err);
+      setComplaintsData([]);
     } finally {
       setComplaintsLoading(false);
     }
   };
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  const respondToComplaint = async (complaintId: string, response: string, resolveImmediately: boolean = false, escalateToAdmin: boolean = false) => {
+    // Only require text for respond and escalate, not for resolve
+    if (!resolveImmediately && (!response || !response.trim())) {
+      alert("Vui lòng nhập nội dung phản hồi");
+      return;
+    }
+    
+    // Confirm dialog for resolve
+    if (resolveImmediately) {
+      const confirmed = confirm("Bạn có chắc chắn muốn đóng khiếu nại này?\n\nKhiếu nại sẽ được đánh dấu là đã giải quyết và Citizen sẽ nhận được thông báo.\n\nLưu ý: Không cần nhập phản hồi nếu đã xử lý xong.");
+      if (!confirmed) return;
+    }
+    
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      const res = await fetch(`${baseUrl}/enterprise/tasks/complaints/${complaintId}/respond`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({
+          response,
+          resolveImmediately,
+          escalateToAdmin,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        alert(json.message);
+        // Refresh complaints list
+        fetchComplaints();
+        // Clear form
+        setResponseText("");
+        setRespondingComplaintId(null);
+        setSelectedComplaint(null);
+      } else {
+        const error = await res.json();
+        alert(error.message || "Failed to respond to complaint");
+      }
+    } catch (err) {
+      console.error('Error responding to complaint:', err);
+      alert("Error responding to complaint");
+    }
+  };
 
   // SignalR: notify enterprise of resolved complaints (for completeness)
   useSignalR({
@@ -538,42 +598,105 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
 
         {activeTab === "tasks" && <EnterpriseTaskManagement />}
 
+        {activeTab === "history" && <EnterpriseHistoryTable />}
+
         {activeTab === "complaints" && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Khiếu nại từ người dân</h3>
               <button
-                className="bg-emerald-600 text-white px-3 py-1 rounded"
+                className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
                 onClick={() => fetchComplaints()}
+                disabled={complaintsLoading}
               >
-                Load Complaints
+                {complaintsLoading ? "Đang tải..." : "Tải lại"}
               </button>
             </div>
             <div>
-              {complaintsLoading && <div>Loading complaints...</div>}
-              {!complaintsLoading && (!complaintsData || !complaintsData.items) && <div>No complaints found.</div>}
-              {!complaintsLoading && complaintsData && complaintsData.items && (
-                <div>
-                  {complaintsData.items.map((c: any) => (
-                    <div key={c.id} className="border p-3 mb-2 rounded bg-white">
-                      <div className="font-semibold">{c.content}</div>
-                      <div className="text-sm text-gray-600">From: {c.citizenFullName}</div>
+              {complaintsLoading && <div className="text-center py-8 text-gray-600">Đang tải khiếu nại...</div>}
+              {!complaintsLoading && (!complaintsData || complaintsData.length === 0) && (
+                <div className="text-center py-8 text-gray-500">Chưa có khiếu nại nào</div>
+              )}
+              {!complaintsLoading && complaintsData && complaintsData.length > 0 && (
+                <div className="space-y-3">
+                  {complaintsData.map((c: any) => (
+                    <div key={c.id} className="border p-4 rounded-lg bg-white shadow-sm">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium">{c.citizenName || "Unknown"}</span>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          c.status === "Open" ? "bg-blue-100 text-blue-800" :
+                          c.status === "InProgress" ? "bg-yellow-100 text-yellow-800" :
+                          c.status === "Resolved" ? "bg-green-100 text-green-800" :
+                          c.status === "Escalated" ? "bg-red-100 text-red-800" :
+                          "bg-gray-100 text-gray-800"
+                        }`}>{c.status}</span>
+                      </div>
+                      <div className="text-gray-700 mb-2">{c.content}</div>
+                      <div className="text-xs text-gray-500 mb-3">
+                        {new Date(c.createdAt).toLocaleDateString("vi-VN")}
+                      </div>
+                      {(c.status === "Open" || c.status === "InProgress") && (
+                        <div className="mt-3 pt-3 border-t">
+                          {respondingComplaintId === c.id ? (
+                            <div className="space-y-2">
+                              <textarea
+                                className="w-full border rounded-lg p-2 text-sm"
+                                rows={3}
+                                placeholder="Nhập phản hồi..."
+                                value={responseText}
+                                onChange={(e) => setResponseText(e.target.value)}
+                              />
+                              <div className="flex gap-2 flex-wrap">
+                                <button
+                                  className="bg-emerald-600 text-white px-3 py-1 rounded text-sm"
+                                  onClick={() => respondToComplaint(c.id, responseText, true, false)}
+                                >
+                                  Đóng khiếu nại
+                                </button>
+                                <button
+                                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                                  onClick={() => respondToComplaint(c.id, responseText, false, false)}
+                                  disabled={!responseText.trim()}
+                                >
+                                  Phản hồi
+                                </button>
+                                <button
+                                  className="bg-red-600 text-white px-3 py-1 rounded text-sm"
+                                  onClick={() => respondToComplaint(c.id, responseText, false, true)}
+                                  disabled={!responseText.trim()}
+                                >
+                                  Chuyển Admin
+                                </button>
+                                <button
+                                  className="bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm"
+                                  onClick={() => { setRespondingComplaintId(null); setResponseText(""); }}
+                                >
+                                  Hủy
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              className="text-emerald-600 text-sm font-medium"
+                              onClick={() => setRespondingComplaintId(c.id)}
+                            >
+                              Phản hồi
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {c.enterpriseResponse && (
+                        <div className="mt-3 p-2 bg-gray-50 rounded text-sm">
+                          <span className="font-medium">Phản hồi:</span>
+                          <p className="text-gray-700 mt-1">{c.enterpriseResponse}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
             </div>
           </div>
-        )}
-
-        {activeTab === "history" && <EnterpriseHistoryTable />}
-
-        {activeTab === "collectors" && (
-          <CollectorsManagement
-            collectors={collectors}
-            loading={profileLoading}
-            error={profileError}
-            onRefresh={refreshCollectors}
-          />
         )}
 
         {activeTab === "capacity" && (
@@ -604,6 +727,15 @@ export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ initia
             profile={enterpriseProfile}
             email={user?.email ?? ""}
             onLogout={logout}
+          />
+        )}
+
+        {activeTab === "collectors" && (
+          <CollectorsManagement
+            collectors={collectors}
+            loading={loading}
+            error={null}
+            onRefresh={refreshCollectors}
           />
         )}
       </section>

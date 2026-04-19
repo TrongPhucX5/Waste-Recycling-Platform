@@ -1,6 +1,7 @@
 using MediatR;
 using WastePlatform.Application.Common.DTOs;
 using WastePlatform.Application.Common.Interfaces;
+using WastePlatform.Domain.Enums;
 
 namespace WastePlatform.Application.Complaints.Commands;
 
@@ -33,7 +34,14 @@ public class CreateComplaintCommandHandler : IRequestHandler<CreateComplaintComm
         if (!enterpriseId.HasValue && request.ReportId.HasValue)
         {
             var report = await _reportRepository.GetByIdAsync(request.ReportId.Value, cancellationToken);
-            if (report?.CollectionTask != null)
+            if (report == null)
+                throw new ArgumentException("Report not found", nameof(request.ReportId));
+
+            // Only allow complaints for reports that have been accepted/assigned/collected
+            if (report.Status == ReportStatus.Pending)
+                throw new InvalidOperationException("Cannot file a complaint for a report that has not been accepted by an enterprise yet.");
+
+            if (report.CollectionTask != null)
             {
                 enterpriseId = report.CollectionTask.EnterpriseId;
             }

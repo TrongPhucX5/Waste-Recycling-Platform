@@ -17,8 +17,10 @@ import {
 } from "../../lib/api/enterpriseTaskApi";
 import { AlertCircle, MapPin, User, CheckCircle, Clock } from "lucide-react";
 import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const EnterpriseTaskManagement: React.FC = () => {
+  const { token } = useAuth();
   const [tasks, setTasks] = useState<EnterpriseCollectionTask[]>([]);
   const [collectors, setCollectors] = useState<EnterpriseCollector[]>([]);
   const [loading, setLoading] = useState(false);
@@ -72,9 +74,13 @@ export const EnterpriseTaskManagement: React.FC = () => {
 
   // SignalR Real-time Updates Setup
   useEffect(() => {
+    if (!token) return;
+    
     const backendUrl = API_CONFIG.SERVER_URL;
     const newConnection = new HubConnectionBuilder()
-      .withUrl(`${backendUrl}/hubs/task`)
+      .withUrl(`${backendUrl}/hubs/task`, {
+        accessTokenFactory: () => token
+      })
       .configureLogging(LogLevel.Information)
       .withAutomaticReconnect()
       .build();
@@ -93,7 +99,7 @@ export const EnterpriseTaskManagement: React.FC = () => {
     return () => {
       newConnection.stop();
     };
-  }, []);
+  }, [token]);
 
   const handleAssignClick = (task: EnterpriseCollectionTask) => {
     setSelectedTask(task);
@@ -338,11 +344,11 @@ export const EnterpriseTaskManagement: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 align-top max-w-xs">
+                    <td className="px-6 py-4 align-top max-w-[280px]">
                       <div className="flex items-start gap-2 mb-2">
                         <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                         <div>
-                          <p className="font-medium text-gray-900 truncate" title={task.report.address}>{task.report.address}</p>
+                          <p className="font-medium text-gray-900 break-words whitespace-normal">{task.report.address}</p>
                           <p className="text-xs text-gray-500">📍 {task.report.latitude.toFixed(4)}, {task.report.longitude.toFixed(4)}</p>
                         </div>
                       </div>
@@ -354,7 +360,7 @@ export const EnterpriseTaskManagement: React.FC = () => {
                         </div>
                       </div>
                       {task.report.description && (
-                        <p className="text-xs text-gray-600 mt-2 border-t border-gray-100 pt-2 truncate" title={task.report.description}>
+                        <p className="text-xs text-gray-600 mt-2 border-t border-gray-100 pt-2 break-words whitespace-normal">
                           Note: {task.report.description}
                         </p>
                       )}
@@ -382,7 +388,7 @@ export const EnterpriseTaskManagement: React.FC = () => {
                         {task.status.toLowerCase() === "collected" && task.collectedWeightKg && (
                           <div className="text-xs text-green-700 font-medium bg-green-50 px-2 py-1 rounded inline-block border border-green-200">
                             Weight: {task.collectedWeightKg} kg
-                            {task.notes && <p className="text-green-600 truncate max-w-[120px]" title={task.notes}>{task.notes}</p>}
+                            {task.notes && <p className="text-green-600 break-words whitespace-normal">{task.notes}</p>}
                           </div>
                         )}
                       </div>

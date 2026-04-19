@@ -54,6 +54,10 @@ export const DisputesManagement: React.FC = () => {
         createdAt: new Date(item.createdAt).toLocaleString("vi-VN"),
         content: item.content || "Không có nội dung chi tiết",
         adminResponse: item.adminResponse || "",
+        // Lịch sử phản hồi
+        enterpriseResponse: item.enterpriseResponse || null,
+        enterpriseRespondedAt: item.enterpriseRespondedAt ? new Date(item.enterpriseRespondedAt).toLocaleString("vi-VN") : null,
+        escalationReason: item.escalationReason || null,
       }));
 
       setDisputes(formattedDisputes);
@@ -193,6 +197,36 @@ export const DisputesManagement: React.FC = () => {
                 <p className="text-xs font-bold text-amber-900 mb-1">Nội dung khiếu nại:</p>
                 <p className="text-sm text-amber-800 leading-relaxed italic">"{dispute.content}"</p>
               </div>
+
+              {/* Lịch sử phản hồi */}
+              {(dispute.enterpriseResponse || dispute.escalationReason) && (
+                <div className="space-y-3 mb-5">
+                  {/* Phản hồi từ doanh nghiệp */}
+                  {dispute.enterpriseResponse && (
+                    <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MessageSquare size={16} className="text-blue-600" />
+                        <p className="text-xs font-bold text-blue-900">Phản hồi từ Doanh nghiệp:</p>
+                      </div>
+                      <p className="text-sm text-blue-800 leading-relaxed italic">"{dispute.enterpriseResponse}"</p>
+                      {dispute.enterpriseRespondedAt && (
+                        <p className="text-xs text-blue-600 mt-2">Phản hồi lúc: {dispute.enterpriseRespondedAt}</p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Lý do escalate */}
+                  {dispute.escalationReason && (
+                    <div className="bg-purple-50/50 rounded-xl p-4 border border-purple-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ShieldAlert size={16} className="text-purple-600" />
+                        <p className="text-xs font-bold text-purple-900">Lý do chuyển lên Admin:</p>
+                      </div>
+                      <p className="text-sm text-purple-800 leading-relaxed italic">"{dispute.escalationReason}"</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {dispute.status === "pending" ? (
                 <div className="flex gap-3 pt-5 border-t border-gray-100">

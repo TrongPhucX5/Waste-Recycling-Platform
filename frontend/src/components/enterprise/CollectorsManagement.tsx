@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, Input, Modal } from "../ui";
 import { EnterpriseCollector } from "../../lib/api/enterpriseTaskApi";
 import { enterpriseCollectorApi } from "../../lib/api/enterpriseCollectorApi";
@@ -33,6 +33,11 @@ export const CollectorsManagement: React.FC<CollectorsManagementProps> = ({
   const [isAvailable, setIsAvailable] = useState(true);
 
   const availableCount = collectors.filter((collector) => collector.isAvailable).length;
+
+  // Auto load collectors when component mounts
+  useEffect(() => {
+    onRefresh();
+  }, []);
 
   const clearForm = () => {
     setFullName("");

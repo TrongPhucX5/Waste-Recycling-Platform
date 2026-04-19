@@ -44,7 +44,11 @@ public class GetComplaintsQueryHandler : IRequestHandler<GetComplaintsQuery, (IE
             Content = c.Content,
             Status = c.Status,
             CreatedAt = c.CreatedAt,
-            HasReport = c.ReportId.HasValue
+            HasReport = c.ReportId.HasValue,
+            EnterpriseResponse = c.EnterpriseResponse,
+            EnterpriseRespondedAt = c.EnterpriseRespondedAt,
+            EscalationReason = c.EscalationReason,
+            AdminResponse = c.AdminResponse
         }).ToList();
 
         int totalPages = (total + request.PageSize - 1) / request.PageSize;

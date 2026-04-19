@@ -24,6 +24,10 @@ public class ComplaintListDto
     public ComplaintStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool HasReport { get; set; }
+    public string? EnterpriseResponse { get; set; }
+    public DateTime? EnterpriseRespondedAt { get; set; }
+    public string? EscalationReason { get; set; }  // Lý do citizen escalate lên admin
+    public string? AdminResponse { get; set; }     // Phản hồi của admin
 }
 
 public class CreateOrUpdateComplaintResponseDto

@@ -118,16 +118,18 @@ export const ReportList: React.FC = () => {
                 </div>
 
                 <div className="flex shrink-0 gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-gray-100 md:border-l md:pl-6">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFeedbackOpen(feedbackOpen === report.id ? null : report.id);
-                    }}
-                    className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-red-600 transition-colors px-3 py-2 rounded-lg hover:bg-red-50 z-10"
-                    title="Gửi Khiếu Nại / Phản Hồi"
-                  >
-                    <AlertCircle size={18} /> Khiếu Nại
-                  </button>
+                  {report.status !== "Pending" && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFeedbackOpen(feedbackOpen === report.id ? null : report.id);
+                      }}
+                      className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-red-600 transition-colors px-3 py-2 rounded-lg hover:bg-red-50 z-10"
+                      title="Gửi Khiếu Nại / Phản Hồi"
+                    >
+                      <AlertCircle size={18} /> Khiếu Nại
+                    </button>
+                  )}
                 </div>
               </div>
 

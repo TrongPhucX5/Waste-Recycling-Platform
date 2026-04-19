@@ -17,6 +17,7 @@ public class Complaint
     public DateTime? UpdatedAt { get; private set; }
 
     public User Citizen { get; private set; } = null!;
+    public Enterprise? Enterprise { get; private set; }
     public WasteReport? WasteReport { get; private set; }
 
     protected Complaint() { }
@@ -42,5 +43,37 @@ public class Complaint
         Status = ComplaintStatus.Rejected;
         AdminResponse = adminResponse;
         ResolvedAt = DateTime.UtcNow;
+    }
+
+    public string? EnterpriseResponse { get; private set; }
+    public DateTime? EnterpriseRespondedAt { get; private set; }
+    public string? EscalationReason { get; private set; }  // Lý do citizen escalate lên admin
+
+    public void AddEnterpriseResponse(string response)
+    {
+        EnterpriseResponse = response;
+        EnterpriseRespondedAt = DateTime.UtcNow;
+        Status = ComplaintStatus.InProgress;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ResolveByEnterprise(string? response)
+    {
+        if (!string.IsNullOrEmpty(response))
+            EnterpriseResponse = response;
+        EnterpriseRespondedAt = DateTime.UtcNow;
+        Status = ComplaintStatus.Resolved;
+        ResolvedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void EscalateToAdmin(string? reason = null)
+    {
+        Status = ComplaintStatus.Escalated;
+        if (!string.IsNullOrEmpty(reason))
+        {
+            EscalationReason = reason;
+        }
+        UpdatedAt = DateTime.UtcNow;
     }
 }
